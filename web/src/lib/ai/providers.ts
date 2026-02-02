@@ -1,3 +1,6 @@
+/// <reference types="node" />
+import "server-only";
+
 export type AiProvider = "openrouter" | "openai" | "gemini";
 
 export type AiGenerateOptions = {
