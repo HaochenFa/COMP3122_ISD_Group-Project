@@ -702,7 +702,7 @@ using (
     join classes c on c.id = a.class_id
     left join enrollments e on e.class_id = c.id and e.user_id = auth.uid()
     where s.id = feedback.submission_id
-      and (c.owner_id = auth.uid() or e.user_id = s.student_id or e.role in ('teacher', 'ta'))
+      and (c.owner_id = auth.uid() or auth.uid() = s.student_id or e.role in ('teacher', 'ta'))
   )
 );
 
