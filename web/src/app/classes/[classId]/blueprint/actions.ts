@@ -52,8 +52,14 @@ export async function generateBlueprint(classId: string) {
   }
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
-  if (!access.allowed || !access.classRow) {
-    redirect(`/classes/${classId}/blueprint?error=${encodeURIComponent(access.reason ?? "Access denied")}`);
+  if (!access.allowed) {
+    redirect(
+      `/classes/${classId}/blueprint?error=${encodeURIComponent(access.reason)}`
+    );
+  }
+
+  if (!access.classRow) {
+    redirect(`/classes/${classId}/blueprint?error=Class not found`);
   }
 
   let admin: ReturnType<typeof createSupabaseAdminClient>;
@@ -199,6 +205,7 @@ export async function generateBlueprint(classId: string) {
     redirect(`/classes/${classId}/blueprint?generated=1`);
   } catch (error) {
     if (blueprintId) {
+      await admin.from("topics").delete().eq("blueprint_id", blueprintId);
       await admin.from("blueprints").delete().eq("id", blueprintId);
     }
 
