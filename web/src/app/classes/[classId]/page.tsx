@@ -123,8 +123,7 @@ export default async function ClassOverviewPage({
             <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 lg:col-span-1">
               <h2 className="text-lg font-semibold">Upload materials</h2>
               <p className="mt-2 text-sm text-slate-400">
-                PDF is required. DOCX/PPTX are supported best-effort. Images will
-                require vision extraction.
+                Supported formats: PDF, DOCX, PPTX. Images require vision extraction.
               </p>
               <form
                 className="mt-6 space-y-4"
@@ -192,7 +191,7 @@ export default async function ClassOverviewPage({
                   ))
                 ) : (
                   <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-4 text-sm text-slate-400">
-                    No materials yet. Upload a PDF to begin blueprint generation.
+                    No materials yet. Upload materials to begin blueprint generation.
                   </div>
                 )}
               </div>
