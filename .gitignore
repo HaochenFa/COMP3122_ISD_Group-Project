@@ -1,0 +1,40 @@
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Trash-*
+
+# IDEs and editors
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+.fleet/
+*.sublime-project
+*.sublime-workspace
+
+# Environment files
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Build output
+.next/
+out/
+dist/
+build/
+
+# Misc
+*.tsbuildinfo
