@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generateBlueprint } from "@/app/classes/[classId]/blueprint/actions";
+import {
+  approveBlueprint,
+  generateBlueprint,
+  publishBlueprint,
+  saveDraft,
+} from "@/app/classes/[classId]/blueprint/actions";
 import { redirect } from "next/navigation";
 import { buildBlueprintPrompt, parseBlueprintResponse } from "@/lib/ai/blueprint";
 import { generateTextWithFallback } from "@/lib/ai/providers";
@@ -49,6 +54,8 @@ function makeBuilder(result: unknown) {
   const resolveResult = () => result;
   builder.select = vi.fn(() => builder);
   builder.eq = vi.fn(() => builder);
+  builder.in = vi.fn(() => builder);
+  builder.neq = vi.fn(() => builder);
   builder.order = vi.fn(() => builder);
   builder.limit = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(async () => resolveResult());
@@ -61,6 +68,8 @@ function makeBuilder(result: unknown) {
   return builder as unknown as {
     select: () => typeof builder;
     eq: () => typeof builder;
+    in: () => typeof builder;
+    neq: () => typeof builder;
     order: () => typeof builder;
     limit: () => typeof builder;
     maybeSingle: () => Promise<unknown>;
@@ -206,6 +215,134 @@ describe("generateBlueprint", () => {
     await expectRedirect(
       () => generateBlueprint("class-1"),
       "/classes/class-1/blueprint?generated=1"
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+});
+
+describe("blueprint workflow actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("saves a draft and redirects", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    adminFromMock.mockImplementation((table: string) => {
+      if (table === "blueprints") {
+        return makeBuilder({
+          data: { id: "bp-1", status: "draft" },
+          error: null,
+        });
+      }
+      if (table === "topics") {
+        return makeBuilder({
+          data: [{ id: "t1", prerequisite_topic_ids: [] }],
+          error: null,
+        });
+      }
+      if (table === "objectives") {
+        return makeBuilder({ error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set(
+      "draft",
+      JSON.stringify({
+        summary: "Summary",
+        topics: [
+          {
+            id: "t1",
+            title: "Limits",
+            description: "Intro",
+            sequence: 1,
+            objectives: [{ statement: "Define limits.", level: "Remember" }],
+          },
+        ],
+      })
+    );
+
+    await expectRedirect(
+      () => saveDraft("class-1", "bp-1", formData),
+      "/classes/class-1/blueprint?saved=1"
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("approves a draft and redirects to overview", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    adminFromMock.mockImplementation((table: string) => {
+      if (table === "blueprints") {
+        return makeBuilder({
+          data: { id: "bp-1", status: "draft" },
+          error: null,
+        });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    await expectRedirect(
+      () => approveBlueprint("class-1", "bp-1"),
+      "/classes/class-1/blueprint/overview?approved=1"
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("publishes an approved blueprint", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    adminFromMock.mockImplementation((table: string) => {
+      if (table === "blueprints") {
+        return makeBuilder({
+          data: { id: "bp-1", status: "approved" },
+          error: null,
+        });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    await expectRedirect(
+      () => publishBlueprint("class-1", "bp-1"),
+      "/classes/class-1/blueprint?published=1"
     );
     expect(redirect).toHaveBeenCalled();
   });
