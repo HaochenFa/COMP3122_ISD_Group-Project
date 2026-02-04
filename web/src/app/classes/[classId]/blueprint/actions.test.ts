@@ -586,7 +586,7 @@ describe("blueprint workflow actions", () => {
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
-      "/classes/class-1/blueprint?error=archive%20failed"
+      "/classes/class-1/blueprint?error=archive%20failed%20Rollback%20issues%3A%20Rollback%20delete%20did%20not%20remove%20the%20draft.."
     );
     expect(redirect).toHaveBeenCalled();
     expect(rollbackBlueprintBuilder?.["delete"]).toHaveBeenCalled();
