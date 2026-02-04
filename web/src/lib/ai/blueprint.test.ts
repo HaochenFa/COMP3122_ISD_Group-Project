@@ -59,6 +59,19 @@ describe("validateBlueprintPayload", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("accepts payloads with section fields", () => {
+    const result = validateBlueprintPayload({
+      ...validPayload,
+      topics: [
+        {
+          ...validPayload.topics[0],
+          section: "Module 1",
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it("rejects payloads missing required fields", () => {
     const result = validateBlueprintPayload({ topics: [] });
     expect(result.ok).toBe(false);

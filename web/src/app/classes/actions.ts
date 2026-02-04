@@ -12,7 +12,6 @@ import {
   sanitizeFilename,
 } from "@/lib/materials/extract-text";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 function getFormValue(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -150,40 +149,16 @@ export async function joinClass(formData: FormData) {
     redirect("/login");
   }
 
-  let admin: ReturnType<typeof createSupabaseAdminClient>;
-  try {
-    admin = createSupabaseAdminClient();
-  } catch {
-    redirectWithError("/join", "Server configuration error");
-    return;
-  }
-  const { data: classRow, error } = await admin
-    .from("classes")
-    .select("id")
-    .eq("join_code", joinCode)
-    .single();
+  const { data: classId, error } = await supabase.rpc("join_class_by_code", {
+    code: joinCode,
+  });
 
-  if (error || !classRow) {
+  if (error || !classId) {
     redirectWithError("/join", "Invalid join code");
     return;
   }
 
-  const { error: enrollmentError } = await admin
-    .from("enrollments")
-    .upsert(
-      {
-        class_id: classRow.id,
-        user_id: user.id,
-        role: "student",
-      },
-      { onConflict: "class_id,user_id", ignoreDuplicates: true }
-    );
-
-  if (enrollmentError) {
-    redirectWithError("/join", enrollmentError.message);
-  }
-
-  redirect(`/classes/${classRow.id}`);
+  redirect(`/classes/${classId}`);
 }
 
 export async function uploadMaterial(classId: string, formData: FormData) {
@@ -237,7 +212,6 @@ export async function uploadMaterial(classId: string, formData: FormData) {
     redirectWithError(`/classes/${classId}`, access.reason);
   }
 
-  const admin = createSupabaseAdminClient();
   const materialId = crypto.randomUUID();
   const safeName = sanitizeFilename(file.name);
   const storagePath = `classes/${classId}/${materialId}/${safeName}`;
@@ -246,7 +220,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
   const extraction = await extractTextFromBuffer(buffer, kind);
   const extractedText = extraction.text || null;
 
-  const { error: uploadError } = await admin.storage
+  const { error: uploadError } = await supabase.storage
     .from(MATERIALS_BUCKET)
     .upload(storagePath, buffer, {
       contentType: file.type || "application/octet-stream",
@@ -257,7 +231,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
     redirectWithError(`/classes/${classId}`, uploadError.message);
   }
 
-  const { error: insertError } = await admin.from("materials").insert({
+  const { error: insertError } = await supabase.from("materials").insert({
     id: materialId,
     class_id: classId,
     uploaded_by: user.id,
@@ -275,7 +249,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
   });
 
   if (insertError) {
-    await admin.storage.from(MATERIALS_BUCKET).remove([storagePath]);
+    await supabase.storage.from(MATERIALS_BUCKET).remove([storagePath]);
     redirectWithError(`/classes/${classId}`, insertError.message);
   }
 

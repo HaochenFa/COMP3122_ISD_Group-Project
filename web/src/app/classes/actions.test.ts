@@ -37,26 +37,20 @@ const supabaseAuth = {
 };
 
 const supabaseFromMock = vi.fn();
-
-vi.mock("@/lib/supabase/server", () => ({
-  createServerSupabaseClient: () => ({
-    auth: supabaseAuth,
-    from: supabaseFromMock,
-  }),
-}));
-
-const adminFromMock = vi.fn();
-const adminStorageMock = {
+const supabaseRpcMock = vi.fn();
+const supabaseStorageMock = {
   from: vi.fn(() => ({
     upload: vi.fn().mockResolvedValue({ error: null }),
     remove: vi.fn().mockResolvedValue({ error: null }),
   })),
 };
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: () => ({
-    from: adminFromMock,
-    storage: adminStorageMock,
+vi.mock("@/lib/supabase/server", () => ({
+  createServerSupabaseClient: () => ({
+    auth: supabaseAuth,
+    from: supabaseFromMock,
+    rpc: supabaseRpcMock,
+    storage: supabaseStorageMock,
   }),
 }));
 
@@ -176,11 +170,9 @@ describe("class actions", () => {
 
   it("rejects invalid join codes", async () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
-    adminFromMock.mockImplementation((table: string) => {
-      if (table === "classes") {
-        return makeBuilder({ data: null, error: { message: "not found" } });
-      }
-      return makeBuilder({ data: null, error: null });
+    supabaseRpcMock.mockResolvedValueOnce({
+      data: null,
+      error: { message: "not found" },
     });
 
     const formData = new FormData();
@@ -195,14 +187,9 @@ describe("class actions", () => {
 
   it("joins a class and redirects on success", async () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
-    adminFromMock.mockImplementation((table: string) => {
-      if (table === "classes") {
-        return makeBuilder({ data: { id: "class-2" }, error: null });
-      }
-      if (table === "enrollments") {
-        return makeBuilder({ error: null });
-      }
-      return makeBuilder({ data: null, error: null });
+    supabaseRpcMock.mockResolvedValueOnce({
+      data: "class-2",
+      error: null,
     });
 
     const formData = new FormData();
@@ -268,10 +255,6 @@ describe("class actions", () => {
       if (table === "enrollments") {
         return makeBuilder({ data: null, error: null });
       }
-      return makeBuilder({ data: null, error: null });
-    });
-
-    adminFromMock.mockImplementation((table: string) => {
       if (table === "materials") {
         return makeBuilder({ error: null });
       }
