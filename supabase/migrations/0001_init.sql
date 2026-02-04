@@ -86,10 +86,6 @@ create table if not exists blueprints (
 
 create index if not exists blueprints_class_id_idx on blueprints(class_id);
 
-create unique index if not exists blueprints_single_draft_per_class
-  on blueprints (class_id)
-  where status = 'draft';
-
 create index if not exists blueprints_draft_rank_idx
   on blueprints (class_id, version desc, created_at desc, id desc)
   where status = 'draft';
@@ -124,6 +120,10 @@ begin
   end if;
 end;
 $$;
+
+create unique index if not exists blueprints_single_draft_per_class
+  on blueprints (class_id)
+  where status = 'draft';
 
 -- Enforce a single published blueprint per class.
 create unique index if not exists blueprints_single_published_per_class
