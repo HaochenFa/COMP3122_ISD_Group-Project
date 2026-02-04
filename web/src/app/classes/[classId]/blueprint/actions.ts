@@ -1169,7 +1169,6 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
   const { error: publishError } = await supabase.rpc("publish_blueprint", {
     p_class_id: classId,
     p_blueprint_id: blueprint.id,
-    p_published_by: user.id,
   });
 
   if (publishError) {

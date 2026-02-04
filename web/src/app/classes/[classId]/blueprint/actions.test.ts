@@ -589,7 +589,7 @@ describe("blueprint workflow actions", () => {
       "/classes/class-1/blueprint?error=archive%20failed"
     );
     expect(redirect).toHaveBeenCalled();
-    expect(rollbackBlueprintBuilder?.delete).toHaveBeenCalled();
+    expect(rollbackBlueprintBuilder?.["delete"]).toHaveBeenCalled();
   });
 
   it("rejects creating a draft from published when one already exists", async () => {
@@ -1021,7 +1021,6 @@ describe("blueprint workflow actions", () => {
     expect(supabaseRpcMock).toHaveBeenCalledWith("publish_blueprint", {
       p_class_id: "class-1",
       p_blueprint_id: "bp-1",
-      p_published_by: "u1",
     });
   });
 });

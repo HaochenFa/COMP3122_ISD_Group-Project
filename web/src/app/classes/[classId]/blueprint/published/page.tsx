@@ -29,17 +29,6 @@ export default async function BlueprintPublishedPage({
     redirect("/dashboard");
   }
 
-  const { data: enrollment } = await supabase
-    .from("enrollments")
-    .select("id")
-    .eq("class_id", classId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (classRow.owner_id !== user.id && !enrollment) {
-    redirect("/dashboard");
-  }
-
   const { data: blueprint } = await supabase
     .from("blueprints")
     .select("id,summary,version,published_at")
