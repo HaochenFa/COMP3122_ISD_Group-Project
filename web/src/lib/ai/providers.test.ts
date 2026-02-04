@@ -53,9 +53,16 @@ describe("generateTextWithFallback", () => {
 
     vi.spyOn(global, "fetch").mockResolvedValueOnce(
       makeJsonResponse({
-        choices: [{ message: { content: "{\"summary\":\"ok\",\"topics\":[{\"key\":\"t\",\"title\":\"T\",\"sequence\":1,\"objectives\":[{\"statement\":\"s\"}]}]}" } }],
+        choices: [
+          {
+            message: {
+              content:
+                '{"summary":"ok","topics":[{"key":"t","title":"T","sequence":1,"objectives":[{"statement":"s"}]}]}',
+            },
+          },
+        ],
         usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
-      })
+      }),
     );
 
     const result = await generateTextWithFallback({
@@ -75,13 +82,20 @@ describe("generateTextWithFallback", () => {
 
     const fetchMock = vi.spyOn(global, "fetch");
     fetchMock.mockResolvedValueOnce(
-      makeJsonResponse({ error: { message: "OpenRouter down" } }, false)
+      makeJsonResponse({ error: { message: "OpenRouter down" } }, false),
     );
     fetchMock.mockResolvedValueOnce(
       makeJsonResponse({
-        choices: [{ message: { content: "{\"summary\":\"ok\",\"topics\":[{\"key\":\"t\",\"title\":\"T\",\"sequence\":1,\"objectives\":[{\"statement\":\"s\"}]}]}" } }],
+        choices: [
+          {
+            message: {
+              content:
+                '{"summary":"ok","topics":[{"key":"t","title":"T","sequence":1,"objectives":[{"statement":"s"}]}]}',
+            },
+          },
+        ],
         usage: { prompt_tokens: 2, completion_tokens: 3, total_tokens: 5 },
-      })
+      }),
     );
 
     const result = await generateTextWithFallback({
@@ -98,14 +112,14 @@ describe("generateTextWithFallback", () => {
     process.env.OPENROUTER_MODEL = "or-model";
 
     vi.spyOn(global, "fetch").mockResolvedValueOnce(
-      makeJsonResponse({ error: { message: "Nope" } }, false)
+      makeJsonResponse({ error: { message: "Nope" } }, false),
     );
 
     await expect(
       generateTextWithFallback({
         system: "sys",
         user: "user",
-      })
+      }),
     ).rejects.toThrow("Nope");
   });
 });

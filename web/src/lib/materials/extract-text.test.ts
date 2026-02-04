@@ -65,7 +65,16 @@ describe("extractTextFromBuffer", () => {
   });
 
   it("extracts and normalizes text from PDFs", async () => {
-    pdfParseMock.mockResolvedValueOnce({ text: "Hello   world\n\nNext" });
+    pdfParseMock.mockImplementationOnce(async (_buffer, options) => {
+      if (options?.pagerender) {
+        await options.pagerender({
+          getTextContent: async () => ({
+            items: [{ str: "Hello" }, { str: "world" }, { str: "Next" }],
+          }),
+        });
+      }
+      return { text: "", numpages: 1 };
+    });
     const result = await extractTextFromBuffer(Buffer.from("pdf"), "pdf");
     expect(result.status).toBe("ready");
     expect(result.text).toBe("Hello world Next");

@@ -31,11 +31,9 @@ const MATERIALS_BUCKET = "materials";
 async function requireTeacherAccess(
   classId: string,
   userId: string,
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
 ) {
-  type AccessResult =
-    | { allowed: true }
-    | { allowed: false; reason: string };
+  type AccessResult = { allowed: true } | { allowed: false; reason: string };
 
   const { data: classRow, error: classError } = await supabase
     .from("classes")
@@ -118,13 +116,11 @@ export async function createClass(formData: FormData) {
     redirectWithError("/classes/new", "Unable to generate a join code");
   }
 
-  const { error: enrollmentError } = await supabase
-    .from("enrollments")
-    .insert({
-      class_id: newClassId,
-      user_id: user.id,
-      role: "teacher",
-    });
+  const { error: enrollmentError } = await supabase.from("enrollments").insert({
+    class_id: newClassId,
+    user_id: user.id,
+    role: "teacher",
+  });
 
   if (enrollmentError) {
     redirectWithError("/classes/new", enrollmentError.message);
@@ -177,7 +173,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
   if (file.size > MAX_MATERIAL_BYTES) {
     redirectWithError(
       `/classes/${classId}`,
-      `File exceeds ${Math.round(MAX_MATERIAL_BYTES / (1024 * 1024))}MB limit`
+      `File exceeds ${Math.round(MAX_MATERIAL_BYTES / (1024 * 1024))}MB limit`,
     );
   }
 
@@ -185,7 +181,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
   if (!kind) {
     redirectWithError(
       `/classes/${classId}`,
-      `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`
+      `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
     );
     return;
   }
@@ -219,6 +215,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
 
   const extraction = await extractTextFromBuffer(buffer, kind);
   const extractedText = extraction.text || null;
+  const processingStatus = extraction.status === "failed" ? "failed" : "processing";
 
   const { error: uploadError } = await supabase.storage
     .from(MATERIALS_BUCKET)
@@ -231,34 +228,64 @@ export async function uploadMaterial(classId: string, formData: FormData) {
     redirectWithError(`/classes/${classId}`, uploadError.message);
   }
 
-  const { error: insertError } = await supabase.from("materials").insert({
-    id: materialId,
-    class_id: classId,
-    uploaded_by: user.id,
-    title: title || file.name || "Untitled material",
-    storage_path: storagePath,
-    mime_type: file.type || null,
-    size_bytes: file.size,
-    status: extraction.status,
-    extracted_text: extractedText,
-    metadata: {
-      original_name: file.name,
-      kind,
-      warnings: extraction.warnings,
-    },
-  });
+  const { data: materialRow, error: insertError } = await supabase
+    .from("materials")
+    .insert({
+      id: materialId,
+      class_id: classId,
+      uploaded_by: user.id,
+      title: title || file.name || "Untitled material",
+      storage_path: storagePath,
+      mime_type: file.type || null,
+      size_bytes: file.size,
+      status: processingStatus,
+      extracted_text: extractedText,
+      metadata: {
+        original_name: file.name,
+        kind,
+        warnings: extraction.warnings,
+        extraction_stats: extraction.stats,
+        page_count: extraction.pageCount ?? null,
+      },
+    })
+    .select("id")
+    .single();
 
-  if (insertError) {
+  if (insertError || !materialRow) {
     await supabase.storage.from(MATERIALS_BUCKET).remove([storagePath]);
     redirectWithError(`/classes/${classId}`, insertError.message);
+    return;
+  }
+
+  let jobFailed = false;
+  if (processingStatus === "processing") {
+    const { error: jobError } = await supabase.from("material_processing_jobs").insert({
+      material_id: materialRow.id,
+      class_id: classId,
+      status: "pending",
+      stage: "queued",
+    });
+
+    if (jobError) {
+      jobFailed = true;
+      await supabase
+        .from("materials")
+        .update({
+          status: "failed",
+          metadata: {
+            original_name: file.name,
+            kind,
+            warnings: [...extraction.warnings, `Job creation failed: ${jobError.message}`],
+            extraction_stats: extraction.stats,
+            page_count: extraction.pageCount ?? null,
+          },
+        })
+        .eq("id", materialRow.id);
+    }
   }
 
   const uploadNotice =
-    extraction.status === "needs_vision"
-      ? "uploaded=vision"
-      : extraction.status === "failed"
-        ? "uploaded=failed"
-        : "uploaded=1";
+    processingStatus === "failed" || jobFailed ? "uploaded=failed" : "uploaded=processing";
 
   redirect(`/classes/${classId}?${uploadNotice}`);
 }

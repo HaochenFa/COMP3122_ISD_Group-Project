@@ -46,14 +46,12 @@ export default async function ClassOverviewPage({
     .single();
 
   const isTeacher =
-    classRow.owner_id === user.id ||
-    enrollment?.role === "teacher" ||
-    enrollment?.role === "ta";
+    classRow.owner_id === user.id || enrollment?.role === "teacher" || enrollment?.role === "ta";
 
   const { data: materials } = isTeacher
     ? await supabase
         .from("materials")
-        .select("id,title,status,created_at,mime_type,size_bytes")
+        .select("id,title,status,created_at,mime_type,size_bytes,metadata")
         .eq("class_id", classId)
         .order("created_at", { ascending: false })
     : { data: null };
@@ -68,25 +66,19 @@ export default async function ClassOverviewPage({
     .maybeSingle();
 
   const errorMessage =
-    typeof resolvedSearchParams?.error === "string"
-      ? resolvedSearchParams.error
-      : null;
+    typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
   const uploadNotice =
-    resolvedSearchParams?.uploaded === "1"
-      ? "Material uploaded and processed."
-      : resolvedSearchParams?.uploaded === "vision"
-        ? "Material uploaded. Vision extraction required."
-        : resolvedSearchParams?.uploaded === "failed"
-          ? "Material uploaded, but extraction failed."
-          : null;
+    resolvedSearchParams?.uploaded === "processing"
+      ? "Material uploaded. Processing will complete shortly."
+      : resolvedSearchParams?.uploaded === "failed"
+        ? "Material uploaded, but extraction failed."
+        : null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto w-full max-w-5xl px-6 py-16">
         <header className="mb-10 space-y-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-            Class Overview
-          </p>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Class Overview</p>
           <h1 className="text-3xl font-semibold">{classRow.title}</h1>
           <p className="text-sm text-slate-400">
             {classRow.subject || "STEM"} · {classRow.level || "Mixed level"}
@@ -109,8 +101,7 @@ export default async function ClassOverviewPage({
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
             <h2 className="text-lg font-semibold">Course blueprint</h2>
             <p className="mt-2 text-sm text-slate-400">
-              Generate a structured blueprint from uploaded materials to unlock
-              AI activities.
+              Generate a structured blueprint from uploaded materials to unlock AI activities.
             </p>
             <Link
               href={`/classes/${classRow.id}/blueprint`}
@@ -126,13 +117,10 @@ export default async function ClassOverviewPage({
                 Join code: <span className="font-semibold">{classRow.join_code}</span>
               </div>
             ) : (
-              <p className="mt-3 text-sm text-slate-400">
-                You are enrolled in this class.
-              </p>
+              <p className="mt-3 text-sm text-slate-400">You are enrolled in this class.</p>
             )}
             <p className="mt-4 text-sm text-slate-400">
-              {classRow.description ||
-                "Add a class description and upload materials to begin."}
+              {classRow.description || "Add a class description and upload materials to begin."}
             </p>
           </div>
         </section>
@@ -144,10 +132,7 @@ export default async function ClassOverviewPage({
               <p className="mt-2 text-sm text-slate-400">
                 Supported formats: PDF, DOCX, PPTX. Images require vision extraction.
               </p>
-              <form
-                className="mt-6 space-y-4"
-                action={uploadMaterial.bind(null, classRow.id)}
-              >
+              <form className="mt-6 space-y-4" action={uploadMaterial.bind(null, classRow.id)}>
                 <div className="space-y-2">
                   <label className="text-sm text-slate-300" htmlFor="title">
                     Title
@@ -206,6 +191,14 @@ export default async function ClassOverviewPage({
                           ? `${Math.round(material.size_bytes / 1024)} KB`
                           : "size unknown"}
                       </p>
+                      {Array.isArray(material.metadata?.warnings) &&
+                      material.metadata.warnings.length > 0 ? (
+                        <ul className="text-xs text-amber-200">
+                          {material.metadata.warnings.map((warning: string) => (
+                            <li key={warning}>{warning}</li>
+                          ))}
+                        </ul>
+                      ) : null}
                     </div>
                   ))
                 ) : (
@@ -221,8 +214,8 @@ export default async function ClassOverviewPage({
             <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
               <h2 className="text-lg font-semibold">Student hub</h2>
               <p className="mt-2 text-sm text-slate-400">
-                Your assignments and practice activities will appear here once the
-                blueprint is published.
+                Your assignments and practice activities will appear here once the blueprint is
+                published.
               </p>
             </div>
             <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
@@ -241,8 +234,7 @@ export default async function ClassOverviewPage({
                 </>
               ) : (
                 <p className="mt-2 text-sm text-slate-400">
-                  Awaiting teacher approval. Check back soon for AI powered
-                  activities.
+                  Awaiting teacher approval. Check back soon for AI powered activities.
                 </p>
               )}
             </div>
