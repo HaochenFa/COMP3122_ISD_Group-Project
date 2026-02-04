@@ -54,6 +54,22 @@ export default async function BlueprintPage({
   const isTeacher = isOwner || enrollment?.role === "teacher" || enrollment?.role === "ta";
 
   if (!isTeacher) {
+    const { data: publishedBlueprint } = await supabase
+      .from("blueprints")
+      .select("id")
+      .eq("class_id", classId)
+      .eq("status", "published")
+      .limit(1)
+      .maybeSingle();
+
+    if (!publishedBlueprint) {
+      redirect(
+        `/classes/${classId}?error=${encodeURIComponent(
+          "No published blueprint available."
+        )}`
+      );
+    }
+
     redirect(`/classes/${classId}/blueprint/published`);
   }
 

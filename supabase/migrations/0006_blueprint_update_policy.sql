@@ -46,7 +46,7 @@ with check (
     where c.id = blueprints.class_id
       and c.owner_id = auth.uid()
   )
-  and blueprints.status in ('draft', 'approved', 'archived')
+  and blueprints.status in ('draft', 'approved')
 );
 
 create policy blueprints_update_owner_approved

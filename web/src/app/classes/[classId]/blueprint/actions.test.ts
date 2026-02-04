@@ -461,6 +461,85 @@ describe("blueprint workflow actions", () => {
     expect(redirect).toHaveBeenCalled();
   });
 
+  it("rejects creating a new draft from a non-draft blueprint when one already exists", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    let blueprintsCall = 0;
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "blueprints") {
+        blueprintsCall += 1;
+        if (blueprintsCall === 1) {
+          return makeBuilder({
+            data: { id: "bp-1", status: "published", version: 2 },
+            error: null,
+          });
+        }
+        if (blueprintsCall === 2) {
+          return makeBuilder({ data: { id: "bp-draft" }, error: null });
+        }
+        return makeBuilder({ data: null, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set(
+      "draft",
+      JSON.stringify({
+        summary: "Summary",
+        topics: [
+          {
+            clientId: "t1",
+            title: "Limits",
+            description: "Intro",
+            sequence: 1,
+            prerequisiteClientIds: [],
+            objectives: [{ statement: "Define limits." }],
+          },
+        ],
+      })
+    );
+
+    await expectRedirect(
+      () => saveDraft("class-1", "bp-1", formData),
+      "/classes/class-1/blueprint?error=A%20draft%20version%20already%20exists.%20Open%20it%20to%20continue%20editing."
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("rejects creating a draft from published when one already exists", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "blueprints") {
+        return makeBuilder({ data: { id: "bp-draft" }, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    await expectRedirect(
+      () => createDraftFromPublished("class-1"),
+      "/classes/class-1/blueprint?error=A%20draft%20version%20already%20exists.%20Open%20it%20to%20continue%20editing."
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
   it("creates a draft from a published blueprint", async () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     let blueprintsCall = 0;
@@ -480,12 +559,15 @@ describe("blueprint workflow actions", () => {
       if (table === "blueprints") {
         blueprintsCall += 1;
         if (blueprintsCall === 1) {
-          return makeBuilder({ data: { id: "bp-pub", summary: "Summary" }, error: null });
+          return makeBuilder({ data: null, error: null });
         }
         if (blueprintsCall === 2) {
-          return makeBuilder({ data: { version: 1 }, error: null });
+          return makeBuilder({ data: { id: "bp-pub", summary: "Summary" }, error: null });
         }
         if (blueprintsCall === 3) {
+          return makeBuilder({ data: { version: 1 }, error: null });
+        }
+        if (blueprintsCall === 4) {
           return makeBuilder({ data: { id: "bp-new" }, error: null });
         }
         return makeBuilder({ error: null });
@@ -582,12 +664,15 @@ describe("blueprint workflow actions", () => {
       if (table === "blueprints") {
         blueprintsCall += 1;
         if (blueprintsCall === 1) {
-          return makeBuilder({ data: { id: "bp-pub", summary: "Summary" }, error: null });
+          return makeBuilder({ data: null, error: null });
         }
         if (blueprintsCall === 2) {
-          return makeBuilder({ data: { version: 1 }, error: null });
+          return makeBuilder({ data: { id: "bp-pub", summary: "Summary" }, error: null });
         }
         if (blueprintsCall === 3) {
+          return makeBuilder({ data: { version: 1 }, error: null });
+        }
+        if (blueprintsCall === 4) {
           return makeBuilder({ data: { id: "bp-new" }, error: null });
         }
         return makeBuilder({ error: null });

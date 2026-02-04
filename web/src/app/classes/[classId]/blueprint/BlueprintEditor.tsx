@@ -98,6 +98,12 @@ class CycleError extends Error {
   }
 }
 
+class MissingTopicError extends Error {
+  constructor() {
+    super("missing");
+  }
+}
+
 function buildTopicMap(topics: DraftTopicState[]): TopicMapLayout {
   const graph = new Map<string, string[]>();
   topics.forEach((topic) => {
@@ -113,6 +119,9 @@ function buildTopicMap(topics: DraftTopicState[]): TopicMapLayout {
     }
     if (visiting.has(node)) {
       throw new CycleError();
+    }
+    if (!graph.has(node)) {
+      throw new MissingTopicError();
     }
     visiting.add(node);
     const prereqs = graph.get(node) ?? [];
@@ -130,6 +139,16 @@ function buildTopicMap(topics: DraftTopicState[]): TopicMapLayout {
   } catch (error) {
     if (error instanceof CycleError) {
       return { nodes: [], edges: [], width: 0, height: 0, hasCycle: true };
+    }
+    if (error instanceof MissingTopicError) {
+      return {
+        nodes: [],
+        edges: [],
+        width: 0,
+        height: 0,
+        hasCycle: false,
+        errorMessage: "Prerequisite references a missing topic.",
+      };
     }
     console.error("Failed to build topic map", error);
     return {

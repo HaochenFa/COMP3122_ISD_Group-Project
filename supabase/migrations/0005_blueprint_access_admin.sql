@@ -31,6 +31,10 @@ as $$
 declare
   target_class_id uuid;
 begin
+  if auth.uid() is null then
+    return null;
+  end if;
+
   if code is null or length(trim(code)) = 0 then
     return null;
   end if;

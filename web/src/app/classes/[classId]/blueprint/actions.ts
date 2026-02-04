@@ -172,6 +172,13 @@ function isNonEmptyString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function makeClientId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 function hasCycle(graph: Map<string, string[]>) {
   const visiting = new Set<string>();
   const visited = new Set<string>();
@@ -275,69 +282,76 @@ async function insertDraftFromPayload({
   }
 
   const topicIdByClientId = new Map<string, string>();
+  const blueprintId = blueprintRow.id;
 
-  for (const topic of payload.topics) {
-    const { data: topicRow, error: topicError } = await supabase
-      .from("topics")
-      .insert({
-        blueprint_id: blueprintRow.id,
-        title: topic.title.trim(),
-        description: topic.description?.trim() || null,
-        section: topic.section?.trim() || null,
-        sequence: topic.sequence,
-        prerequisite_topic_ids: [],
-      })
-      .select("id")
-      .single();
-
-    if (topicError || !topicRow) {
-      throw new Error(topicError?.message ?? "Failed to create topic.");
-    }
-
-    topicIdByClientId.set(topic.clientId, topicRow.id);
-
-    const objectives = topic.objectives.map((objective) => ({
-      topic_id: topicRow.id,
-      statement: objective.statement.trim(),
-      level: objective.level?.trim() || null,
-    }));
-
-    if (objectives.length > 0) {
-      const { error: objectivesError } = await supabase
-        .from("objectives")
-        .insert(objectives);
-
-      if (objectivesError) {
-        throw new Error(objectivesError.message);
-      }
-    }
-  }
-
-  for (const [clientId, prereqClientIds] of prereqGraph.entries()) {
-    if (prereqClientIds.length === 0) {
-      continue;
-    }
-    const topicId = topicIdByClientId.get(clientId);
-    if (!topicId) {
-      continue;
-    }
-    const mappedPrereqs = prereqClientIds
-      .map((prereqId) => topicIdByClientId.get(prereqId))
-      .filter((value): value is string => Boolean(value));
-
-    if (mappedPrereqs.length > 0) {
-      const { error: prereqUpdateError } = await supabase
+  try {
+    for (const topic of payload.topics) {
+      const { data: topicRow, error: topicError } = await supabase
         .from("topics")
-        .update({ prerequisite_topic_ids: mappedPrereqs })
-        .eq("id", topicId);
+        .insert({
+          blueprint_id: blueprintId,
+          title: topic.title.trim(),
+          description: topic.description?.trim() || null,
+          section: topic.section?.trim() || null,
+          sequence: topic.sequence,
+          prerequisite_topic_ids: [],
+        })
+        .select("id")
+        .single();
 
-      if (prereqUpdateError) {
-        throw new Error(prereqUpdateError.message);
+      if (topicError || !topicRow) {
+        throw new Error(topicError?.message ?? "Failed to create topic.");
+      }
+
+      topicIdByClientId.set(topic.clientId, topicRow.id);
+
+      const objectives = topic.objectives.map((objective) => ({
+        topic_id: topicRow.id,
+        statement: objective.statement.trim(),
+        level: objective.level?.trim() || null,
+      }));
+
+      if (objectives.length > 0) {
+        const { error: objectivesError } = await supabase
+          .from("objectives")
+          .insert(objectives);
+
+        if (objectivesError) {
+          throw new Error(objectivesError.message);
+        }
       }
     }
+
+    for (const [clientId, prereqClientIds] of prereqGraph.entries()) {
+      if (prereqClientIds.length === 0) {
+        continue;
+      }
+      const topicId = topicIdByClientId.get(clientId);
+      if (!topicId) {
+        continue;
+      }
+      const mappedPrereqs = prereqClientIds
+        .map((prereqId) => topicIdByClientId.get(prereqId))
+        .filter((value): value is string => Boolean(value));
+
+      if (mappedPrereqs.length > 0) {
+        const { error: prereqUpdateError } = await supabase
+          .from("topics")
+          .update({ prerequisite_topic_ids: mappedPrereqs })
+          .eq("id", topicId);
+
+        if (prereqUpdateError) {
+          throw new Error(prereqUpdateError.message);
+        }
+      }
+    }
+  } catch (error) {
+    await supabase.from("topics").delete().eq("blueprint_id", blueprintId);
+    await supabase.from("blueprints").delete().eq("id", blueprintId);
+    throw error;
   }
 
-  return blueprintRow.id;
+  return blueprintId;
 }
 
 export async function generateBlueprint(classId: string) {
@@ -541,6 +555,7 @@ export async function saveDraft(
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
     redirectWithError(`/classes/${classId}/blueprint`, access.reason);
+    return;
   }
 
   let payload: DraftPayload;
@@ -584,6 +599,30 @@ export async function saveDraft(
   }
 
   if (blueprint.status !== "draft") {
+    const { data: existingDraft, error: existingDraftError } = await supabase
+      .from("blueprints")
+      .select("id")
+      .eq("class_id", classId)
+      .eq("status", "draft")
+      .limit(1)
+      .maybeSingle();
+
+    if (existingDraftError) {
+      redirectWithError(
+        `/classes/${classId}/blueprint`,
+        existingDraftError.message
+      );
+      return;
+    }
+
+    if (existingDraft) {
+      redirectWithError(
+        `/classes/${classId}/blueprint`,
+        "A draft version already exists. Open it to continue editing."
+      );
+      return;
+    }
+
     try {
       await insertDraftFromPayload({
         supabase,
@@ -880,6 +919,8 @@ export async function approveBlueprint(classId: string, blueprintId: string) {
   redirect(`/classes/${classId}/blueprint/overview?approved=1`);
 }
 
+// Creates a new draft based on the latest published blueprint and archives the
+// published version. Use publishBlueprint to promote an approved draft.
 export async function createDraftFromPublished(classId: string) {
   const supabase = await createServerSupabaseClient();
   const {
@@ -895,6 +936,27 @@ export async function createDraftFromPublished(classId: string) {
     redirectWithError(
       `/classes/${classId}/blueprint`,
       "Only the class owner can create a new draft from the published blueprint."
+    );
+    return;
+  }
+
+  const { data: existingDraft, error: existingDraftError } = await supabase
+    .from("blueprints")
+    .select("id")
+    .eq("class_id", classId)
+    .eq("status", "draft")
+    .limit(1)
+    .maybeSingle();
+
+  if (existingDraftError) {
+    redirectWithError(`/classes/${classId}/blueprint`, existingDraftError.message);
+    return;
+  }
+
+  if (existingDraft) {
+    redirectWithError(
+      `/classes/${classId}/blueprint`,
+      "A draft version already exists. Open it to continue editing."
     );
     return;
   }
@@ -924,6 +986,11 @@ export async function createDraftFromPublished(classId: string) {
     return;
   }
 
+  const clientIdByTopicId = new Map<string, string>();
+  topics?.forEach((topic) => {
+    clientIdByTopicId.set(topic.id, makeClientId());
+  });
+
   const { data: objectives } = topics && topics.length > 0
     ? await supabase
         .from("objectives")
@@ -948,12 +1015,14 @@ export async function createDraftFromPublished(classId: string) {
     summary: publishedBlueprint.summary ?? "",
     topics:
       topics?.map((topic) => ({
-        clientId: topic.id,
+        clientId: clientIdByTopicId.get(topic.id) ?? makeClientId(),
         title: topic.title,
         description: topic.description ?? null,
         section: topic.section ?? null,
         sequence: topic.sequence,
-        prerequisiteClientIds: topic.prerequisite_topic_ids ?? [],
+        prerequisiteClientIds: (topic.prerequisite_topic_ids ?? []).map(
+          (id) => clientIdByTopicId.get(id) ?? id
+        ),
         objectives: (objectivesByTopic.get(topic.id) ?? []).map((objective) => ({
           statement: objective.statement,
           level: objective.level ?? null,
@@ -999,6 +1068,7 @@ export async function createDraftFromPublished(classId: string) {
   redirect(`/classes/${classId}/blueprint?draft=1`);
 }
 
+// Publishes an approved draft and archives any older approved/published versions.
 export async function publishBlueprint(classId: string, blueprintId: string) {
   const supabase = await createServerSupabaseClient();
   const {
@@ -1047,7 +1117,8 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     .from("blueprints")
     .select("id,status")
     .eq("class_id", classId)
-    .neq("id", blueprint.id);
+    .neq("id", blueprint.id)
+    .in("status", ["approved", "published"]);
 
   if (otherError) {
     redirectWithError(`/classes/${classId}/blueprint`, otherError.message);
@@ -1058,7 +1129,8 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     .from("blueprints")
     .update({ status: "archived" })
     .eq("class_id", classId)
-    .neq("id", blueprint.id);
+    .neq("id", blueprint.id)
+    .in("status", ["approved", "published"]);
 
   if (archiveError) {
     redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
@@ -1075,6 +1147,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     .eq("id", blueprint.id);
 
   if (publishError) {
+    const rollbackErrors: string[] = [];
     if (otherBlueprintsBeforeArchive && otherBlueprintsBeforeArchive.length > 0) {
       for (const row of otherBlueprintsBeforeArchive) {
         const { error: rollbackError } = await supabase
@@ -1082,6 +1155,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
           .update({ status: row.status })
           .eq("id", row.id);
         if (rollbackError) {
+          rollbackErrors.push(`${row.id}: ${rollbackError.message}`);
           console.error("Failed to rollback blueprint status", {
             blueprintId: row.id,
             error: rollbackError.message,
@@ -1089,7 +1163,14 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
         }
       }
     }
-    redirectWithError(`/classes/${classId}/blueprint`, publishError.message);
+    const rollbackMessage =
+      rollbackErrors.length > 0
+        ? ` Rollback issues: ${rollbackErrors.join("; ")}.`
+        : "";
+    redirectWithError(
+      `/classes/${classId}/blueprint`,
+      `${publishError.message}${rollbackMessage}`
+    );
     return;
   }
 
