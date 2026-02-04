@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { buildBlueprintPrompt, parseBlueprintResponse } from "@/lib/ai/blueprint";
 import { generateTextWithFallback } from "@/lib/ai/providers";
 
@@ -17,9 +16,12 @@ type DraftObjectiveInput = {
 
 type DraftTopicInput = {
   id?: string;
+  clientId: string;
   title: string;
   description?: string | null;
+  section?: string | null;
   sequence: number;
+  prerequisiteClientIds?: string[];
   objectives: DraftObjectiveInput[];
 };
 
@@ -108,8 +110,16 @@ function parseDraftPayload(raw: FormDataEntryValue | null): DraftPayload {
     throw new Error("At least one topic is required.");
   }
 
+  const seenClientIds = new Set<string>();
   const seenSequences = new Set<number>();
   payload.topics.forEach((topic, index) => {
+    if (!isNonEmptyString(topic.clientId)) {
+      throw new Error(`Topic ${index + 1} client id is required.`);
+    }
+    if (seenClientIds.has(topic.clientId)) {
+      throw new Error(`Topic ${index + 1} client id must be unique.`);
+    }
+    seenClientIds.add(topic.clientId);
     if (!isNonEmptyString(topic.title)) {
       throw new Error(`Topic ${index + 1} title is required.`);
     }
@@ -129,6 +139,23 @@ function parseDraftPayload(raw: FormDataEntryValue | null): DraftPayload {
     if (!Array.isArray(topic.objectives) || topic.objectives.length === 0) {
       throw new Error(`Topic ${index + 1} must include objectives.`);
     }
+    if (
+      topic.prerequisiteClientIds &&
+      !Array.isArray(topic.prerequisiteClientIds)
+    ) {
+      throw new Error(
+        `Topic ${index + 1} prerequisite client ids must be an array.`
+      );
+    }
+    if (Array.isArray(topic.prerequisiteClientIds)) {
+      topic.prerequisiteClientIds.forEach((clientId, prereqIndex) => {
+        if (!isNonEmptyString(clientId)) {
+          throw new Error(
+            `Topic ${index + 1} prerequisite ${prereqIndex + 1} is invalid.`
+          );
+        }
+      });
+    }
     topic.objectives.forEach((objective, objectiveIndex) => {
       if (!isNonEmptyString(objective.statement)) {
         throw new Error(
@@ -143,6 +170,173 @@ function parseDraftPayload(raw: FormDataEntryValue | null): DraftPayload {
 
 function isNonEmptyString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function hasCycle(graph: Map<string, string[]>) {
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+
+  const visit = (node: string): boolean => {
+    if (visiting.has(node)) {
+      return true;
+    }
+    if (visited.has(node)) {
+      return false;
+    }
+    visiting.add(node);
+    const edges = graph.get(node) ?? [];
+    for (const next of edges) {
+      if (visit(next)) {
+        return true;
+      }
+    }
+    visiting.delete(node);
+    visited.add(node);
+    return false;
+  };
+
+  for (const node of graph.keys()) {
+    if (visit(node)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function validatePrerequisites(topics: DraftTopicInput[]) {
+  const clientIds = new Set(topics.map((topic) => topic.clientId));
+  const graph = new Map<string, string[]>();
+
+  for (const topic of topics) {
+    const prereqs = topic.prerequisiteClientIds ?? [];
+    for (const prereq of prereqs) {
+      if (!clientIds.has(prereq)) {
+        throw new Error("Prerequisite references a missing topic.");
+      }
+      if (prereq === topic.clientId) {
+        throw new Error("Prerequisite cannot reference itself.");
+      }
+    }
+    graph.set(topic.clientId, prereqs);
+  }
+
+  if (hasCycle(graph)) {
+    throw new Error("Prerequisite graph contains a cycle.");
+  }
+
+  return graph;
+}
+
+async function fetchNextBlueprintVersion(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  classId: string
+) {
+  const { data: latestBlueprint } = await supabase
+    .from("blueprints")
+    .select("version")
+    .eq("class_id", classId)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return latestBlueprint?.version ? latestBlueprint.version + 1 : 1;
+}
+
+async function insertDraftFromPayload({
+  supabase,
+  classId,
+  userId,
+  payload,
+  prereqGraph,
+}: {
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  classId: string;
+  userId: string;
+  payload: DraftPayload;
+  prereqGraph: Map<string, string[]>;
+}) {
+  const nextVersion = await fetchNextBlueprintVersion(supabase, classId);
+
+  const { data: blueprintRow, error: blueprintError } = await supabase
+    .from("blueprints")
+    .insert({
+      class_id: classId,
+      version: nextVersion,
+      status: "draft",
+      summary: payload.summary.trim(),
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+
+  if (blueprintError || !blueprintRow) {
+    throw new Error(blueprintError?.message ?? "Failed to create draft.");
+  }
+
+  const topicIdByClientId = new Map<string, string>();
+
+  for (const topic of payload.topics) {
+    const { data: topicRow, error: topicError } = await supabase
+      .from("topics")
+      .insert({
+        blueprint_id: blueprintRow.id,
+        title: topic.title.trim(),
+        description: topic.description?.trim() || null,
+        section: topic.section?.trim() || null,
+        sequence: topic.sequence,
+        prerequisite_topic_ids: [],
+      })
+      .select("id")
+      .single();
+
+    if (topicError || !topicRow) {
+      throw new Error(topicError?.message ?? "Failed to create topic.");
+    }
+
+    topicIdByClientId.set(topic.clientId, topicRow.id);
+
+    const objectives = topic.objectives.map((objective) => ({
+      topic_id: topicRow.id,
+      statement: objective.statement.trim(),
+      level: objective.level?.trim() || null,
+    }));
+
+    if (objectives.length > 0) {
+      const { error: objectivesError } = await supabase
+        .from("objectives")
+        .insert(objectives);
+
+      if (objectivesError) {
+        throw new Error(objectivesError.message);
+      }
+    }
+  }
+
+  for (const [clientId, prereqClientIds] of prereqGraph.entries()) {
+    if (prereqClientIds.length === 0) {
+      continue;
+    }
+    const topicId = topicIdByClientId.get(clientId);
+    if (!topicId) {
+      continue;
+    }
+    const mappedPrereqs = prereqClientIds
+      .map((prereqId) => topicIdByClientId.get(prereqId))
+      .filter((value): value is string => Boolean(value));
+
+    if (mappedPrereqs.length > 0) {
+      const { error: prereqUpdateError } = await supabase
+        .from("topics")
+        .update({ prerequisite_topic_ids: mappedPrereqs })
+        .eq("id", topicId);
+
+      if (prereqUpdateError) {
+        throw new Error(prereqUpdateError.message);
+      }
+    }
+  }
+
+  return blueprintRow.id;
 }
 
 export async function generateBlueprint(classId: string) {
@@ -165,14 +359,7 @@ export async function generateBlueprint(classId: string) {
     return;
   }
 
-  let admin: ReturnType<typeof createSupabaseAdminClient>;
-  try {
-    admin = createSupabaseAdminClient();
-  } catch {
-    redirectWithError(`/classes/${classId}/blueprint`, "Server configuration error");
-    return;
-  }
-  const { data: materials } = await admin
+  const { data: materials } = await supabase
     .from("materials")
     .select("id,title,extracted_text,status")
     .eq("class_id", classId)
@@ -209,7 +396,7 @@ export async function generateBlueprint(classId: string) {
 
     const payload = parseBlueprintResponse(result.content);
 
-    const { data: latestBlueprint } = await admin
+    const { data: latestBlueprint } = await supabase
       .from("blueprints")
       .select("version")
       .eq("class_id", classId)
@@ -221,7 +408,7 @@ export async function generateBlueprint(classId: string) {
       ? latestBlueprint.version + 1
       : 1;
 
-    const { data: blueprintRow, error: blueprintError } = await admin
+    const { data: blueprintRow, error: blueprintError } = await supabase
       .from("blueprints")
       .insert({
         class_id: classId,
@@ -241,12 +428,13 @@ export async function generateBlueprint(classId: string) {
     const topicIdByKey = new Map<string, string>();
 
     for (const topic of payload.topics) {
-      const { data: topicRow, error: topicError } = await admin
+      const { data: topicRow, error: topicError } = await supabase
         .from("topics")
         .insert({
           blueprint_id: blueprintRow.id,
           title: topic.title,
           description: topic.description ?? null,
+          section: null,
           sequence: topic.sequence,
           prerequisite_topic_ids: [],
         })
@@ -266,7 +454,7 @@ export async function generateBlueprint(classId: string) {
       }));
 
       if (objectives.length > 0) {
-        const { error: objectivesError } = await admin
+        const { error: objectivesError } = await supabase
           .from("objectives")
           .insert(objectives);
 
@@ -285,7 +473,7 @@ export async function generateBlueprint(classId: string) {
       if (prerequisiteIds.length > 0) {
         const topicId = topicIdByKey.get(topic.key);
         if (topicId) {
-          const { error: updateError } = await admin
+          const { error: updateError } = await supabase
             .from("topics")
             .update({ prerequisite_topic_ids: prerequisiteIds })
             .eq("id", topicId);
@@ -297,7 +485,7 @@ export async function generateBlueprint(classId: string) {
       }
     }
 
-    await admin.from("ai_requests").insert({
+    await supabase.from("ai_requests").insert({
       class_id: classId,
       user_id: user.id,
       provider: result.provider,
@@ -316,11 +504,11 @@ export async function generateBlueprint(classId: string) {
       throw error;
     }
     if (blueprintId) {
-      await admin.from("topics").delete().eq("blueprint_id", blueprintId);
-      await admin.from("blueprints").delete().eq("id", blueprintId);
+      await supabase.from("topics").delete().eq("blueprint_id", blueprintId);
+      await supabase.from("blueprints").delete().eq("id", blueprintId);
     }
 
-    await admin.from("ai_requests").insert({
+    await supabase.from("ai_requests").insert({
       class_id: classId,
       user_id: user.id,
       provider: usedProvider ?? "unknown",
@@ -362,17 +550,19 @@ export async function saveDraft(
     return;
   }
 
-  let admin: ReturnType<typeof createSupabaseAdminClient>;
+  let prereqGraph: Map<string, string[]>;
   try {
-    admin = createSupabaseAdminClient();
-  } catch {
-    redirectWithError(`/classes/${classId}/blueprint`, "Server configuration error");
+    prereqGraph = validatePrerequisites(payload.topics);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Invalid prerequisites.";
+    redirectWithError(`/classes/${classId}/blueprint`, message);
     return;
   }
 
-  const { data: blueprint, error: blueprintError } = await admin
+  const { data: blueprint, error: blueprintError } = await supabase
     .from("blueprints")
-    .select("id,status")
+    .select("id,status,version")
     .eq("id", blueprintId)
     .eq("class_id", classId)
     .single();
@@ -389,13 +579,38 @@ export async function saveDraft(
     );
   }
 
-  const updatePayload: Record<string, unknown> = {
-    summary: payload.summary.trim(),
-  };
+  if (blueprint.status !== "draft") {
+    try {
+      await insertDraftFromPayload({
+        supabase,
+        classId,
+        userId: user.id,
+        payload,
+        prereqGraph,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to create draft.";
+      redirectWithError(`/classes/${classId}/blueprint`, message);
+      return;
+    }
 
-  const { data: existingTopics, error: existingTopicsError } = await admin
+    const { error: archiveError } = await supabase
+      .from("blueprints")
+      .update({ status: "archived" })
+      .eq("id", blueprint.id);
+
+    if (archiveError) {
+      redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
+    }
+
+    redirect(`/classes/${classId}/blueprint?saved=1`);
+    return;
+  }
+
+  const { data: existingTopics, error: existingTopicsError } = await supabase
     .from("topics")
-    .select("id,prerequisite_topic_ids")
+    .select("id")
     .eq("blueprint_id", blueprint.id);
 
   if (existingTopicsError) {
@@ -415,36 +630,25 @@ export async function saveDraft(
     }
   }
 
-  if (blueprint.status !== "draft") {
-    updatePayload.status = "draft";
-    updatePayload.approved_by = null;
-    updatePayload.approved_at = null;
-    updatePayload.published_by = null;
-    updatePayload.published_at = null;
-  }
-
-  const { error: updateError } = await admin
+  const { error: updateError } = await supabase
     .from("blueprints")
-    .update(updatePayload)
+    .update({ summary: payload.summary.trim() })
     .eq("id", blueprint.id);
 
   if (updateError) {
     redirectWithError(`/classes/${classId}/blueprint`, updateError.message);
   }
 
-  const topicsById = new Map(
-    (existingTopics ?? []).map((topic) => [topic.id, topic])
-  );
-
   const savedTopics: DraftTopicInput[] = [];
 
   for (const topic of payload.topics) {
     if (topic.id) {
-      const { error: topicUpdateError } = await admin
+      const { error: topicUpdateError } = await supabase
         .from("topics")
         .update({
           title: topic.title.trim(),
           description: topic.description?.trim() || null,
+          section: topic.section?.trim() || null,
           sequence: topic.sequence,
         })
         .eq("id", topic.id);
@@ -455,12 +659,13 @@ export async function saveDraft(
 
       savedTopics.push(topic);
     } else {
-      const { data: topicRow, error: topicInsertError } = await admin
+      const { data: topicRow, error: topicInsertError } = await supabase
         .from("topics")
         .insert({
           blueprint_id: blueprint.id,
           title: topic.title.trim(),
           description: topic.description?.trim() || null,
+          section: topic.section?.trim() || null,
           sequence: topic.sequence,
           prerequisite_topic_ids: [],
         })
@@ -487,7 +692,7 @@ export async function saveDraft(
     existingTopics?.filter((topic) => !savedTopicIds.has(topic.id)) ?? [];
 
   if (topicsToDelete.length > 0) {
-    const { error: deleteError } = await admin
+    const { error: deleteError } = await supabase
       .from("topics")
       .delete()
       .in(
@@ -500,20 +705,25 @@ export async function saveDraft(
     }
   }
 
-  for (const topic of savedTopics) {
-    if (!topic.id) {
+  const topicIdByClientId = new Map(
+    savedTopics
+      .map((topic) => [topic.clientId, topic.id] as const)
+      .filter((entry): entry is [string, string] => Boolean(entry[1]))
+  );
+
+  for (const [clientId, prereqClientIds] of prereqGraph.entries()) {
+    const topicId = topicIdByClientId.get(clientId);
+    if (!topicId) {
       continue;
     }
-    const existingPrereqs =
-      topicsById.get(topic.id)?.prerequisite_topic_ids ?? [];
-    const filteredPrereqs = existingPrereqs.filter((id: string) =>
-      savedTopicIds.has(id)
-    );
+    const mappedPrereqs = prereqClientIds
+      .map((prereqId) => topicIdByClientId.get(prereqId))
+      .filter((value): value is string => Boolean(value));
 
-    const { error: prereqUpdateError } = await admin
+    const { error: prereqUpdateError } = await supabase
       .from("topics")
-      .update({ prerequisite_topic_ids: filteredPrereqs })
-      .eq("id", topic.id);
+      .update({ prerequisite_topic_ids: mappedPrereqs })
+      .eq("id", topicId);
 
     if (prereqUpdateError) {
       redirectWithError(`/classes/${classId}/blueprint`, prereqUpdateError.message);
@@ -521,7 +731,7 @@ export async function saveDraft(
   }
 
   const savedTopicIdList = Array.from(savedTopicIds);
-  const { data: existingObjectives, error: existingObjectivesError } = await admin
+  const { data: existingObjectives, error: existingObjectivesError } = await supabase
     .from("objectives")
     .select("id,topic_id")
     .in("topic_id", savedTopicIdList);
@@ -563,7 +773,7 @@ export async function saveDraft(
     }));
 
     if (objectives.length > 0) {
-      const { error: upsertObjectivesError } = await admin
+      const { error: upsertObjectivesError } = await supabase
         .from("objectives")
         .upsert(objectives, { onConflict: "id" });
 
@@ -581,7 +791,7 @@ export async function saveDraft(
     [];
 
   if (objectivesToDelete.length > 0) {
-    const { error: deleteObjectivesError } = await admin
+    const { error: deleteObjectivesError } = await supabase
       .from("objectives")
       .delete()
       .in(
@@ -615,14 +825,7 @@ export async function approveBlueprint(classId: string, blueprintId: string) {
     );
   }
 
-  let admin: ReturnType<typeof createSupabaseAdminClient>;
-  try {
-    admin = createSupabaseAdminClient();
-  } catch {
-    redirectWithError(`/classes/${classId}/blueprint`, "Server configuration error");
-    return;
-  }
-  const { data: blueprint, error } = await admin
+  const { data: blueprint, error } = await supabase
     .from("blueprints")
     .select("id,status")
     .eq("id", blueprintId)
@@ -641,7 +844,7 @@ export async function approveBlueprint(classId: string, blueprintId: string) {
     );
   }
 
-  const { error: approveError } = await admin
+  const { error: approveError } = await supabase
     .from("blueprints")
     .update({
       status: "approved",
@@ -657,6 +860,122 @@ export async function approveBlueprint(classId: string, blueprintId: string) {
   }
 
   redirect(`/classes/${classId}/blueprint/overview?approved=1`);
+}
+
+export async function createDraftFromPublished(classId: string) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const access = await requireTeacherAccess(classId, user.id, supabase);
+  if (!access.allowed || !access.isOwner) {
+    redirectWithError(
+      `/classes/${classId}/blueprint`,
+      "Only the class owner can create a new draft from the published blueprint."
+    );
+  }
+
+  const { data: publishedBlueprint, error: publishedError } = await supabase
+    .from("blueprints")
+    .select("id,summary")
+    .eq("class_id", classId)
+    .eq("status", "published")
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (publishedError || !publishedBlueprint) {
+    redirectWithError(`/classes/${classId}/blueprint`, "No published blueprint found.");
+    return;
+  }
+
+  const { data: topics, error: topicsError } = await supabase
+    .from("topics")
+    .select("id,title,description,section,sequence,prerequisite_topic_ids")
+    .eq("blueprint_id", publishedBlueprint.id)
+    .order("sequence", { ascending: true });
+
+  if (topicsError) {
+    redirectWithError(`/classes/${classId}/blueprint`, topicsError.message);
+  }
+
+  const { data: objectives } = topics && topics.length > 0
+    ? await supabase
+        .from("objectives")
+        .select("id,topic_id,statement,level")
+        .in(
+          "topic_id",
+          topics.map((topic) => topic.id)
+        )
+    : { data: null };
+
+  const objectivesByTopic = new Map<
+    string,
+    { statement: string; level?: string | null }[]
+  >();
+  objectives?.forEach((objective) => {
+    const list = objectivesByTopic.get(objective.topic_id) ?? [];
+    list.push({ statement: objective.statement, level: objective.level });
+    objectivesByTopic.set(objective.topic_id, list);
+  });
+
+  const payload: DraftPayload = {
+    summary: publishedBlueprint.summary ?? "",
+    topics:
+      topics?.map((topic) => ({
+        clientId: topic.id,
+        title: topic.title,
+        description: topic.description ?? null,
+        section: topic.section ?? null,
+        sequence: topic.sequence,
+        prerequisiteClientIds: topic.prerequisite_topic_ids ?? [],
+        objectives: (objectivesByTopic.get(topic.id) ?? []).map((objective) => ({
+          statement: objective.statement,
+          level: objective.level ?? null,
+        })),
+      })) ?? [],
+  };
+
+  let prereqGraph: Map<string, string[]>;
+  try {
+    prereqGraph = validatePrerequisites(payload.topics);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Invalid prerequisites.";
+    redirectWithError(`/classes/${classId}/blueprint`, message);
+    return;
+  }
+
+  try {
+    await insertDraftFromPayload({
+      supabase,
+      classId,
+      userId: user.id,
+      payload,
+      prereqGraph,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to create draft.";
+    redirectWithError(`/classes/${classId}/blueprint`, message);
+    return;
+  }
+
+  const { error: archiveError } = await supabase
+    .from("blueprints")
+    .update({ status: "archived" })
+    .eq("id", publishedBlueprint.id);
+
+  if (archiveError) {
+    redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
+  }
+
+  redirect(`/classes/${classId}/blueprint?draft=1`);
 }
 
 export async function publishBlueprint(classId: string, blueprintId: string) {
@@ -677,14 +996,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     );
   }
 
-  let admin: ReturnType<typeof createSupabaseAdminClient>;
-  try {
-    admin = createSupabaseAdminClient();
-  } catch {
-    redirectWithError(`/classes/${classId}/blueprint`, "Server configuration error");
-    return;
-  }
-  const { data: blueprint, error } = await admin
+  const { data: blueprint, error } = await supabase
     .from("blueprints")
     .select("id,status")
     .eq("id", blueprintId)
@@ -707,19 +1019,27 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     );
   }
 
-  const { data: archivedBlueprints, error: archiveError } = await admin
+  const { data: otherBlueprints, error: otherError } = await supabase
+    .from("blueprints")
+    .select("id,status")
+    .eq("class_id", classId)
+    .neq("id", blueprint.id);
+
+  if (otherError) {
+    redirectWithError(`/classes/${classId}/blueprint`, otherError.message);
+  }
+
+  const { error: archiveError } = await supabase
     .from("blueprints")
     .update({ status: "archived" })
     .eq("class_id", classId)
-    .eq("status", "published")
-    .neq("id", blueprint.id)
-    .select("id");
+    .neq("id", blueprint.id);
 
   if (archiveError) {
     redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
   }
 
-  const { error: publishError } = await admin
+  const { error: publishError } = await supabase
     .from("blueprints")
     .update({
       status: "published",
@@ -729,14 +1049,13 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     .eq("id", blueprint.id);
 
   if (publishError) {
-    if (archivedBlueprints && archivedBlueprints.length > 0) {
-      await admin
-        .from("blueprints")
-        .update({ status: "published" })
-        .in(
-          "id",
-          archivedBlueprints.map((row) => row.id)
-        );
+    if (otherBlueprints && otherBlueprints.length > 0) {
+      for (const row of otherBlueprints) {
+        await supabase
+          .from("blueprints")
+          .update({ status: row.status })
+          .eq("id", row.id);
+      }
     }
     redirectWithError(`/classes/${classId}/blueprint`, publishError.message);
   }
