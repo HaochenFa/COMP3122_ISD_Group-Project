@@ -21,9 +21,9 @@ vi.mock("@/lib/join-code", () => ({
 }));
 
 vi.mock("@/lib/materials/extract-text", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/lib/materials/extract-text")
-  >("@/lib/materials/extract-text");
+  const actual = await vi.importActual<typeof import("@/lib/materials/extract-text")>(
+    "@/lib/materials/extract-text",
+  );
   return {
     ...actual,
     detectMaterialKind: vi.fn(),
@@ -67,8 +67,10 @@ function makeBuilder(result: unknown) {
   builder.update = vi.fn(() => builder);
   builder.delete = vi.fn(() => builder);
   builder.upsert = vi.fn(async () => resolveResult());
-  builder.then = (onFulfilled: (value: unknown) => unknown, onRejected: (reason: unknown) => unknown) =>
-    Promise.resolve(resolveResult()).then(onFulfilled, onRejected);
+  builder.then = (
+    onFulfilled: (value: unknown) => unknown,
+    onRejected: (reason: unknown) => unknown,
+  ) => Promise.resolve(resolveResult()).then(onFulfilled, onRejected);
   return builder as unknown as {
     select: () => typeof builder;
     eq: () => typeof builder;
@@ -80,7 +82,10 @@ function makeBuilder(result: unknown) {
     update: () => typeof builder;
     delete: () => typeof builder;
     upsert: () => Promise<unknown>;
-    then: (onFulfilled: (value: unknown) => unknown, onRejected: (reason: unknown) => unknown) => Promise<unknown>;
+    then: (
+      onFulfilled: (value: unknown) => unknown,
+      onRejected: (reason: unknown) => unknown,
+    ) => Promise<unknown>;
   };
 }
 
@@ -120,7 +125,7 @@ describe("class actions", () => {
 
     await expectRedirect(
       () => createClass(formData),
-      "/classes/new?error=Class%20title%20is%20required"
+      "/classes/new?error=Class%20title%20is%20required",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -141,9 +146,7 @@ describe("class actions", () => {
 
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
-        return makeInsertSequenceBuilder([
-          { data: { id: "class-1" }, error: null },
-        ]);
+        return makeInsertSequenceBuilder([{ data: { id: "class-1" }, error: null }]);
       }
       if (table === "enrollments") {
         return makeBuilder({ error: null });
@@ -161,10 +164,7 @@ describe("class actions", () => {
   it("rejects empty join codes", async () => {
     const formData = new FormData();
     formData.set("join_code", "");
-    await expectRedirect(
-      () => joinClass(formData),
-      "/join?error=Join%20code%20is%20required"
-    );
+    await expectRedirect(() => joinClass(formData), "/join?error=Join%20code%20is%20required");
     expect(redirect).toHaveBeenCalled();
   });
 
@@ -178,10 +178,7 @@ describe("class actions", () => {
     const formData = new FormData();
     formData.set("join_code", "BAD123");
 
-    await expectRedirect(
-      () => joinClass(formData),
-      "/join?error=Invalid%20join%20code"
-    );
+    await expectRedirect(() => joinClass(formData), "/join?error=Invalid%20join%20code");
     expect(redirect).toHaveBeenCalled();
   });
 
@@ -203,7 +200,7 @@ describe("class actions", () => {
     const formData = new FormData();
     await expectRedirect(
       () => uploadMaterial("class-1", formData),
-      "/classes/class-1?error=Material%20file%20is%20required"
+      "/classes/class-1?error=Material%20file%20is%20required",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -223,7 +220,7 @@ describe("class actions", () => {
 
     await expectRedirect(
       () => uploadMaterial("class-1", formData),
-      `/classes/class-1?error=${encodedMessage}`
+      `/classes/class-1?error=${encodedMessage}`,
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -239,8 +236,10 @@ describe("class actions", () => {
     vi.mocked(detectMaterialKind).mockReturnValue("pdf");
     vi.mocked(extractTextFromBuffer).mockResolvedValue({
       text: "hello",
+      segments: [],
       status: "ready",
       warnings: [],
+      stats: { charCount: 5, segmentCount: 1 },
     });
     vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
 
@@ -256,6 +255,9 @@ describe("class actions", () => {
         return makeBuilder({ data: null, error: null });
       }
       if (table === "materials") {
+        return makeBuilder({ data: { id: "m1" }, error: null });
+      }
+      if (table === "material_processing_jobs") {
         return makeBuilder({ error: null });
       }
       return makeBuilder({ data: null, error: null });
@@ -263,7 +265,7 @@ describe("class actions", () => {
 
     await expectRedirect(
       () => uploadMaterial("class-1", formData),
-      "/classes/class-1?uploaded=1"
+      "/classes/class-1?uploaded=processing",
     );
     expect(redirect).toHaveBeenCalled();
   });

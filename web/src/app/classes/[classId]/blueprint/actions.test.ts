@@ -9,6 +9,7 @@ import {
 import { redirect } from "next/navigation";
 import { buildBlueprintPrompt, parseBlueprintResponse } from "@/lib/ai/blueprint";
 import { generateTextWithFallback } from "@/lib/ai/providers";
+import { retrieveMaterialContext } from "@/lib/materials/retrieval";
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
@@ -30,6 +31,10 @@ vi.mock("@/lib/ai/providers", () => ({
   generateTextWithFallback: vi.fn(),
 }));
 
+vi.mock("@/lib/materials/retrieval", () => ({
+  retrieveMaterialContext: vi.fn(),
+}));
+
 const supabaseAuth = {
   getUser: vi.fn(),
 };
@@ -43,7 +48,6 @@ vi.mock("@/lib/supabase/server", () => ({
     rpc: supabaseRpcMock,
   }),
 }));
-
 
 function makeBuilder(result: unknown) {
   const builder: Record<string, unknown> = {};
@@ -60,8 +64,10 @@ function makeBuilder(result: unknown) {
   builder.update = vi.fn(() => builder);
   builder.upsert = vi.fn(() => builder);
   builder.delete = vi.fn(() => builder);
-  builder.then = (onFulfilled: (value: unknown) => unknown, onRejected: (reason: unknown) => unknown) =>
-    Promise.resolve(resolveResult()).then(onFulfilled, onRejected);
+  builder.then = (
+    onFulfilled: (value: unknown) => unknown,
+    onRejected: (reason: unknown) => unknown,
+  ) => Promise.resolve(resolveResult()).then(onFulfilled, onRejected);
   return builder as unknown as {
     select: () => typeof builder;
     eq: () => typeof builder;
@@ -75,7 +81,10 @@ function makeBuilder(result: unknown) {
     update: () => typeof builder;
     upsert: () => typeof builder;
     delete: () => typeof builder;
-    then: (onFulfilled: (value: unknown) => unknown, onRejected: (reason: unknown) => unknown) => Promise<unknown>;
+    then: (
+      onFulfilled: (value: unknown) => unknown,
+      onRejected: (reason: unknown) => unknown,
+    ) => Promise<unknown>;
   };
 }
 
@@ -140,7 +149,7 @@ describe("generateBlueprint", () => {
 
     await expectRedirect(
       () => generateBlueprint("class-1"),
-      "/classes/class-1/blueprint?error=Upload%20at%20least%20one%20processed%20material"
+      "/classes/class-1/blueprint?error=Upload%20at%20least%20one%20processed%20material",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -168,9 +177,7 @@ describe("generateBlueprint", () => {
       }
       if (table === "materials") {
         return makeBuilder({
-          data: [
-            { id: "m1", title: "Lecture", extracted_text: "content", status: "ready" },
-          ],
+          data: [{ id: "m1", title: "Lecture", extracted_text: "content", status: "ready" }],
           error: null,
         });
       }
@@ -197,7 +204,7 @@ describe("generateBlueprint", () => {
     vi.mocked(generateTextWithFallback).mockResolvedValue({
       provider: "openrouter",
       model: "model",
-      content: "{\"summary\":\"ok\"}",
+      content: '{"summary":"ok"}',
       usage: { promptTokens: 1, completionTokens: 2, totalTokens: 3 },
       latencyMs: 10,
     });
@@ -206,6 +213,8 @@ describe("generateBlueprint", () => {
       system: "system",
       user: "user",
     });
+
+    vi.mocked(retrieveMaterialContext).mockResolvedValue("context");
 
     vi.mocked(parseBlueprintResponse).mockReturnValue({
       summary: "Summary",
@@ -221,7 +230,7 @@ describe("generateBlueprint", () => {
 
     await expectRedirect(
       () => generateBlueprint("class-1"),
-      "/classes/class-1/blueprint?generated=1"
+      "/classes/class-1/blueprint?generated=1",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -280,12 +289,12 @@ describe("blueprint workflow actions", () => {
             objectives: [{ statement: "Define limits.", level: "Remember" }],
           },
         ],
-      })
+      }),
     );
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
-      "/classes/class-1/blueprint?saved=1"
+      "/classes/class-1/blueprint?saved=1",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -315,12 +324,12 @@ describe("blueprint workflow actions", () => {
             objectives: [{ statement: "Differentiate functions." }],
           },
         ],
-      })
+      }),
     );
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
-      "/classes/class-1/blueprint?error=Topic%202%20sequence%20must%20be%20unique."
+      "/classes/class-1/blueprint?error=Topic%202%20sequence%20must%20be%20unique.",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -342,12 +351,12 @@ describe("blueprint workflow actions", () => {
             objectives: [{ statement: "Define limits." }],
           },
         ],
-      })
+      }),
     );
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
-      "/classes/class-1/blueprint?error=Topic%201%20sequence%20must%20be%20between%201%20and%201000."
+      "/classes/class-1/blueprint?error=Topic%201%20sequence%20must%20be%20between%201%20and%201000.",
     );
 
     mockTeacherAccess();
@@ -366,12 +375,12 @@ describe("blueprint workflow actions", () => {
             objectives: [{ statement: "Define limits." }],
           },
         ],
-      })
+      }),
     );
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", nonInteger),
-      "/classes/class-1/blueprint?error=Topic%201%20sequence%20must%20be%20an%20integer."
+      "/classes/class-1/blueprint?error=Topic%201%20sequence%20must%20be%20an%20integer.",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -401,12 +410,12 @@ describe("blueprint workflow actions", () => {
             objectives: [{ statement: "Differentiate functions." }],
           },
         ],
-      })
+      }),
     );
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
-      "/classes/class-1/blueprint?error=Prerequisite%20graph%20contains%20a%20cycle."
+      "/classes/class-1/blueprint?error=Prerequisite%20graph%20contains%20a%20cycle.",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -428,12 +437,12 @@ describe("blueprint workflow actions", () => {
             objectives: [{ statement: "Define limits." }],
           },
         ],
-      })
+      }),
     );
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
-      "/classes/class-1/blueprint?error=Prerequisite%20references%20a%20missing%20topic."
+      "/classes/class-1/blueprint?error=Prerequisite%20references%20a%20missing%20topic.",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -455,12 +464,12 @@ describe("blueprint workflow actions", () => {
             objectives: [{ statement: "Define limits." }],
           },
         ],
-      })
+      }),
     );
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
-      "/classes/class-1/blueprint?error=Prerequisite%20cannot%20reference%20itself."
+      "/classes/class-1/blueprint?error=Prerequisite%20cannot%20reference%20itself.",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -509,12 +518,12 @@ describe("blueprint workflow actions", () => {
             objectives: [{ statement: "Define limits." }],
           },
         ],
-      })
+      }),
     );
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
-      "/classes/class-1/blueprint?error=A%20draft%20version%20already%20exists.%20Open%20it%20to%20continue%20editing."
+      "/classes/class-1/blueprint?error=A%20draft%20version%20already%20exists.%20Open%20it%20to%20continue%20editing.",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -581,12 +590,12 @@ describe("blueprint workflow actions", () => {
             objectives: [{ statement: "Define limits." }],
           },
         ],
-      })
+      }),
     );
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
-      "/classes/class-1/blueprint?error=archive%20failed%20Rollback%20issues%3A%20Rollback%20delete%20did%20not%20remove%20the%20draft.."
+      "/classes/class-1/blueprint?error=archive%20failed%20Rollback%20issues%3A%20Rollback%20delete%20did%20not%20remove%20the%20draft..",
     );
     expect(redirect).toHaveBeenCalled();
     expect(rollbackBlueprintBuilder?.["delete"]).toHaveBeenCalled();
@@ -612,7 +621,7 @@ describe("blueprint workflow actions", () => {
 
     await expectRedirect(
       () => createDraftFromPublished("class-1"),
-      "/classes/class-1/blueprint?error=A%20draft%20version%20already%20exists.%20Open%20it%20to%20continue%20editing."
+      "/classes/class-1/blueprint?error=A%20draft%20version%20already%20exists.%20Open%20it%20to%20continue%20editing.",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -676,7 +685,7 @@ describe("blueprint workflow actions", () => {
 
     await expectRedirect(
       () => createDraftFromPublished("class-1"),
-      "/classes/class-1/blueprint?error=A%20draft%20version%20already%20exists.%20Open%20it%20to%20continue%20editing."
+      "/classes/class-1/blueprint?error=A%20draft%20version%20already%20exists.%20Open%20it%20to%20continue%20editing.",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -757,7 +766,7 @@ describe("blueprint workflow actions", () => {
 
     await expectRedirect(
       () => createDraftFromPublished("class-1"),
-      "/classes/class-1/blueprint?draft=1"
+      "/classes/class-1/blueprint?draft=1",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -782,7 +791,7 @@ describe("blueprint workflow actions", () => {
 
     await expectRedirect(
       () => createDraftFromPublished("class-1"),
-      "/classes/class-1/blueprint?error=No%20published%20blueprint%20found."
+      "/classes/class-1/blueprint?error=No%20published%20blueprint%20found.",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -845,7 +854,7 @@ describe("blueprint workflow actions", () => {
 
     await expectRedirect(
       () => createDraftFromPublished("class-1"),
-      "/classes/class-1/blueprint?error=insert%20failed"
+      "/classes/class-1/blueprint?error=insert%20failed",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -893,12 +902,12 @@ describe("blueprint workflow actions", () => {
             objectives: [{ statement: "Define limits." }],
           },
         ],
-      })
+      }),
     );
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
-      "/classes/class-1/blueprint?error=Invalid%20topic%20reference."
+      "/classes/class-1/blueprint?error=Invalid%20topic%20reference.",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -949,17 +958,15 @@ describe("blueprint workflow actions", () => {
             description: "Intro",
             sequence: 1,
             prerequisiteClientIds: [],
-            objectives: [
-              { id: "o-2", statement: "Define limits.", level: "Remember" },
-            ],
+            objectives: [{ id: "o-2", statement: "Define limits.", level: "Remember" }],
           },
         ],
-      })
+      }),
     );
 
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
-      "/classes/class-1/blueprint?error=Invalid%20objective%20reference."
+      "/classes/class-1/blueprint?error=Invalid%20objective%20reference.",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -987,7 +994,7 @@ describe("blueprint workflow actions", () => {
 
     await expectRedirect(
       () => approveBlueprint("class-1", "bp-1"),
-      "/classes/class-1/blueprint/overview?approved=1"
+      "/classes/class-1/blueprint/overview?approved=1",
     );
     expect(redirect).toHaveBeenCalled();
   });
@@ -1015,7 +1022,7 @@ describe("blueprint workflow actions", () => {
 
     await expectRedirect(
       () => publishBlueprint("class-1", "bp-1"),
-      "/classes/class-1/blueprint?published=1"
+      "/classes/class-1/blueprint?published=1",
     );
     expect(redirect).toHaveBeenCalled();
     expect(supabaseRpcMock).toHaveBeenCalledWith("publish_blueprint", {

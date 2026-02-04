@@ -56,6 +56,12 @@ Student Flow
 - Normalize prompts into structured JSON outputs.
 - Apply refusal rules for unsafe or irrelevant requests.
 
+**Material Ingestion + Retrieval**
+
+- Materials are extracted into structured segments (pages, slides, paragraphs).
+- Background processing runs OCR and generates embeddings for chunked retrieval.
+- Blueprint generation retrieves top-ranked chunks with source metadata instead of raw concatenation.
+
 **Blueprint Lifecycle**
 
 - Draft: editable working version.
