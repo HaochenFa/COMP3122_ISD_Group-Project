@@ -21,11 +21,22 @@ export default async function BlueprintPublishedPage({
 
   const { data: classRow } = await supabase
     .from("classes")
-    .select("id,title,subject,level")
+    .select("id,title,subject,level,owner_id")
     .eq("id", classId)
     .single();
 
   if (!classRow) {
+    redirect("/dashboard");
+  }
+
+  const { data: enrollment } = await supabase
+    .from("enrollments")
+    .select("id")
+    .eq("class_id", classId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (classRow.owner_id !== user.id && !enrollment) {
     redirect("/dashboard");
   }
 
