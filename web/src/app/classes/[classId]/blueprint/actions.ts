@@ -1021,7 +1021,7 @@ export async function createDraftFromPublished(classId: string) {
         section: topic.section ?? null,
         sequence: topic.sequence,
         prerequisiteClientIds: (topic.prerequisite_topic_ids ?? []).map(
-          (id) => clientIdByTopicId.get(id) ?? id
+          (id: string) => clientIdByTopicId.get(id) ?? id
         ),
         objectives: (objectivesByTopic.get(topic.id) ?? []).map((objective) => ({
           statement: objective.statement,
