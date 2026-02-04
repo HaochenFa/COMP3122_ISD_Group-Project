@@ -604,7 +604,7 @@ export async function saveDraft(
       redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
     }
 
-    redirect(`/classes/${classId}/blueprint?saved=1`);
+    redirect(`/classes/${classId}/blueprint?draft=1`);
     return;
   }
 
@@ -1019,7 +1019,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     );
   }
 
-  const { data: otherBlueprints, error: otherError } = await supabase
+  const { data: otherBlueprintsBeforeArchive, error: otherError } = await supabase
     .from("blueprints")
     .select("id,status")
     .eq("class_id", classId)
@@ -1049,8 +1049,8 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     .eq("id", blueprint.id);
 
   if (publishError) {
-    if (otherBlueprints && otherBlueprints.length > 0) {
-      for (const row of otherBlueprints) {
+    if (otherBlueprintsBeforeArchive && otherBlueprintsBeforeArchive.length > 0) {
+      for (const row of otherBlueprintsBeforeArchive) {
         await supabase
           .from("blueprints")
           .update({ status: row.status })
