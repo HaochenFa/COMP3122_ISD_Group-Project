@@ -144,10 +144,8 @@ describe("class actions", () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     vi.mocked(generateJoinCode).mockReturnValue("JOIN01");
 
+    supabaseRpcMock.mockResolvedValueOnce({ data: "class-1", error: null });
     supabaseFromMock.mockImplementation((table: string) => {
-      if (table === "classes") {
-        return makeInsertSequenceBuilder([{ data: { id: "class-1" }, error: null }]);
-      }
       if (table === "enrollments") {
         return makeBuilder({ error: null });
       }

@@ -89,27 +89,27 @@ export async function createClass(formData: FormData) {
 
   for (let attempt = 0; attempt < MAX_JOIN_CODE_ATTEMPTS; attempt += 1) {
     const joinCode = generateJoinCode();
-    const { data, error } = await supabase
-      .from("classes")
-      .insert({
-        owner_id: user.id,
-        title,
-        description,
-        subject,
-        level,
-        join_code: joinCode,
-      })
-      .select("id")
-      .single();
+    const { data, error } = await supabase.rpc("create_class", {
+      p_title: title,
+      p_description: description ?? null,
+      p_subject: subject ?? null,
+      p_level: level ?? null,
+      p_join_code: joinCode,
+    });
 
     if (!error && data) {
-      newClassId = data.id;
+      newClassId = data;
       break;
     }
 
-    if (error?.code !== "23505") {
-      redirectWithError("/classes/new", error.message);
+    if (error) {
+      if (error.code !== "23505") {
+        redirectWithError("/classes/new", error.message);
+      }
+      continue;
     }
+
+    redirectWithError("/classes/new", "Unable to create class");
   }
 
   if (!newClassId) {
