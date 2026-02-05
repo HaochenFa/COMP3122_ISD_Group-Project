@@ -40,3 +40,7 @@ build/
 
 # Misc
 *.tsbuildinfo
+
+# Supabase local CLI artifacts
+supabase/.branches/
+supabase/.temp/
