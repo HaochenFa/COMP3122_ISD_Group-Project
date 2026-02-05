@@ -562,6 +562,8 @@ as $$
   limit match_count;
 $$;
 
+grant execute on function match_material_chunks(uuid, vector, int) to authenticated;
+
 -- Publish blueprint atomically with per-class locking.
 create or replace function publish_blueprint(
   p_class_id uuid,
@@ -699,7 +701,7 @@ using (is_admin());
 create policy enrollments_select_member
 on enrollments for select
 using (
-  auth.uid() = user_id
+  public.requesting_user_id() = user_id
   or is_class_owner(enrollments.class_id)
 );
 
@@ -710,7 +712,7 @@ with check (public.requesting_user_id() = user_id);
 create policy enrollments_delete_self_or_owner
 on enrollments for delete
 using (
-  auth.uid() = user_id
+  public.requesting_user_id() = user_id
   or is_class_owner(enrollments.class_id)
 );
 
@@ -776,12 +778,12 @@ using (
   exists (
     select 1 from classes c
     where c.id = material_processing_jobs.class_id
-      and c.owner_id = auth.uid()
+      and c.owner_id = public.requesting_user_id()
   )
   or exists (
     select 1 from enrollments e
     where e.class_id = material_processing_jobs.class_id
-      and e.user_id = auth.uid()
+      and e.user_id = public.requesting_user_id()
       and e.role in ('teacher', 'ta')
   )
 );
@@ -796,11 +798,11 @@ with check (
     where m.id = material_processing_jobs.material_id
       and m.class_id = material_processing_jobs.class_id
       and (
-        c.owner_id = auth.uid()
+        c.owner_id = public.requesting_user_id()
         or exists (
           select 1 from enrollments e
           where e.class_id = m.class_id
-            and e.user_id = auth.uid()
+            and e.user_id = public.requesting_user_id()
             and e.role in ('teacher', 'ta')
         )
       )
@@ -813,12 +815,12 @@ using (
   exists (
     select 1 from classes c
     where c.id = material_processing_jobs.class_id
-      and c.owner_id = auth.uid()
+      and c.owner_id = public.requesting_user_id()
   )
   or exists (
     select 1 from enrollments e
     where e.class_id = material_processing_jobs.class_id
-      and e.user_id = auth.uid()
+      and e.user_id = public.requesting_user_id()
       and e.role in ('teacher', 'ta')
   )
 );
@@ -833,11 +835,11 @@ with check (
     where m.id = material_processing_jobs.material_id
       and m.class_id = material_processing_jobs.class_id
       and (
-        c.owner_id = auth.uid()
+        c.owner_id = public.requesting_user_id()
         or exists (
           select 1 from enrollments e
           where e.class_id = m.class_id
-            and e.user_id = auth.uid()
+            and e.user_id = public.requesting_user_id()
             and e.role in ('teacher', 'ta')
         )
       )
@@ -850,12 +852,12 @@ using (
   exists (
     select 1 from classes c
     where c.id = material_processing_jobs.class_id
-      and c.owner_id = auth.uid()
+      and c.owner_id = public.requesting_user_id()
   )
   or exists (
     select 1 from enrollments e
     where e.class_id = material_processing_jobs.class_id
-      and e.user_id = auth.uid()
+      and e.user_id = public.requesting_user_id()
       and e.role in ('teacher', 'ta')
   )
 );
@@ -870,12 +872,12 @@ using (
   exists (
     select 1 from classes c
     where c.id = material_chunks.class_id
-      and c.owner_id = auth.uid()
+      and c.owner_id = public.requesting_user_id()
   )
   or exists (
     select 1 from enrollments e
     where e.class_id = material_chunks.class_id
-      and e.user_id = auth.uid()
+      and e.user_id = public.requesting_user_id()
       and e.role in ('teacher', 'ta')
   )
 );
@@ -886,12 +888,12 @@ with check (
   exists (
     select 1 from classes c
     where c.id = material_chunks.class_id
-      and c.owner_id = auth.uid()
+      and c.owner_id = public.requesting_user_id()
   )
   or exists (
     select 1 from enrollments e
     where e.class_id = material_chunks.class_id
-      and e.user_id = auth.uid()
+      and e.user_id = public.requesting_user_id()
       and e.role in ('teacher', 'ta')
   )
 );
@@ -902,12 +904,12 @@ using (
   exists (
     select 1 from classes c
     where c.id = material_chunks.class_id
-      and c.owner_id = auth.uid()
+      and c.owner_id = public.requesting_user_id()
   )
   or exists (
     select 1 from enrollments e
     where e.class_id = material_chunks.class_id
-      and e.user_id = auth.uid()
+      and e.user_id = public.requesting_user_id()
       and e.role in ('teacher', 'ta')
   )
 );
@@ -918,12 +920,12 @@ using (
   exists (
     select 1 from classes c
     where c.id = material_chunks.class_id
-      and c.owner_id = auth.uid()
+      and c.owner_id = public.requesting_user_id()
   )
   or exists (
     select 1 from enrollments e
     where e.class_id = material_chunks.class_id
-      and e.user_id = auth.uid()
+      and e.user_id = public.requesting_user_id()
       and e.role in ('teacher', 'ta')
   )
 );
