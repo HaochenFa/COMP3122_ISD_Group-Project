@@ -231,6 +231,22 @@ describe("POST /api/materials/process", () => {
     expect(response.status).toBe(200);
   });
 
+  it("accepts x-cron-secret header auth for cron secret", async () => {
+    process.env.CRON_SECRET = "test-secret";
+    const { POST } = await import("@/app/api/materials/process/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/materials/process", {
+        method: "POST",
+        headers: {
+          "x-cron-secret": "test-secret",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
   it("rejects unauthorized requests when cron secret is configured", async () => {
     process.env.CRON_SECRET = "test-secret";
     const { POST } = await import("@/app/api/materials/process/route");
