@@ -32,6 +32,16 @@ Student Flow
 - Request scaffolded homework help.
 - View exam review plan and submit reflections.
 
+**AI Chat Vertical Slice (Implemented)**
+
+- Open Practice Chat: available to class members when a published blueprint exists. Conversations are session-only and not persisted.
+- Chat Assignment Flow:
+  - Teacher creates a chat activity + assignment (whole class targeting).
+  - Student completes assignment chat and submits transcript + reflection.
+  - Teacher reviews submission, records manual score, and adds feedback highlights/comments.
+- Context policy: chat responses are grounded in published blueprint + retrieved material chunks.
+- Chat model responses are normalized to deterministic JSON and logged in `ai_requests`.
+
 **Enrollment Modes**
 
 - Primary: join code. Students self enroll using a class code.
@@ -55,6 +65,7 @@ Student Flow
 - Restrict AI context to approved materials and blueprint.
 - Normalize prompts into structured JSON outputs.
 - Apply refusal rules for unsafe or irrelevant requests.
+- Reject prompt-injection attempts that request hidden instructions, external context, or unrelated class data.
 
 **Material Ingestion + Retrieval**
 

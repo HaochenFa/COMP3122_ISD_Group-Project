@@ -11,6 +11,10 @@ type NavKey = "dashboard" | "new-class" | "join-class";
 type AuthHeaderProps = {
   breadcrumbs?: Breadcrumb[];
   activeNav?: NavKey;
+  classContext?: {
+    classId: string;
+    isTeacher: boolean;
+  };
 };
 
 function getNavClass(isActive: boolean) {
@@ -22,7 +26,7 @@ function getNavClass(isActive: boolean) {
   return `${base} border-white/10 text-slate-200 hover:border-white/30 hover:bg-white/5`;
 }
 
-export default function AuthHeader({ breadcrumbs, activeNav }: AuthHeaderProps) {
+export default function AuthHeader({ breadcrumbs, activeNav, classContext }: AuthHeaderProps) {
   return (
     <div className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/80 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-6">
@@ -54,6 +58,24 @@ export default function AuthHeader({ breadcrumbs, activeNav }: AuthHeaderProps) 
           >
             Join Class
           </Link>
+          {classContext ? (
+            <>
+              <Link
+                href={`/classes/${classContext.classId}/chat`}
+                className="ui-motion-color rounded-full border border-white/10 px-4 py-2 text-xs font-medium text-slate-200 hover:border-white/30 hover:bg-white/5"
+              >
+                Open Chat
+              </Link>
+              {classContext.isTeacher ? (
+                <Link
+                  href={`/classes/${classContext.classId}/activities/chat/new`}
+                  className="ui-motion-color rounded-full border border-cyan-400/40 bg-cyan-400/10 px-4 py-2 text-xs font-medium text-cyan-100 hover:border-cyan-300/60 hover:bg-cyan-400/20"
+                >
+                  New Chat Assignment
+                </Link>
+              ) : null}
+            </>
+          ) : null}
           <form action={signOut}>
             <button
               type="submit"

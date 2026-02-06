@@ -12,6 +12,20 @@ type SearchParams = {
   uploaded?: string;
 };
 
+type ChatAssignmentSummary = {
+  assignmentId: string;
+  title: string;
+  dueAt: string | null;
+  status?: string;
+};
+
+function formatDueDate(value: string | null) {
+  if (!value) {
+    return "No due date";
+  }
+  return `Due ${new Date(value).toLocaleString()}`;
+}
+
 export default async function ClassOverviewPage({
   params,
   searchParams,
@@ -67,6 +81,108 @@ export default async function ClassOverviewPage({
     .limit(1)
     .maybeSingle();
 
+  let teacherChatAssignments: ChatAssignmentSummary[] = [];
+  let studentChatAssignments: ChatAssignmentSummary[] = [];
+
+  if (isTeacher) {
+    const { data: assignments } = await supabase
+      .from("assignments")
+      .select("id,activity_id,due_at")
+      .eq("class_id", classId)
+      .order("created_at", { ascending: false })
+      .limit(8);
+
+    const activityIds = (assignments ?? []).map((assignment) => assignment.activity_id);
+    const { data: activities } =
+      activityIds.length > 0
+        ? await supabase
+            .from("activities")
+            .select("id,title,type")
+            .in("id", activityIds)
+            .eq("class_id", classId)
+        : { data: null };
+
+    const activityTitleById = new Map(
+      (activities ?? [])
+        .filter((activity) => activity.type === "chat")
+        .map((activity) => [activity.id, activity.title]),
+    );
+
+    teacherChatAssignments = (assignments ?? [])
+      .filter((assignment) => activityTitleById.has(assignment.activity_id))
+      .map((assignment) => ({
+        assignmentId: assignment.id,
+        title: activityTitleById.get(assignment.activity_id) ?? "Chat assignment",
+        dueAt: assignment.due_at,
+      }));
+  } else {
+    const { data: recipients } = await supabase
+      .from("assignment_recipients")
+      .select("assignment_id,status,assigned_at")
+      .eq("student_id", user.id)
+      .order("assigned_at", { ascending: false })
+      .limit(20);
+
+    const assignmentIds = (recipients ?? []).map((recipient) => recipient.assignment_id);
+    const { data: assignments } =
+      assignmentIds.length > 0
+        ? await supabase
+            .from("assignments")
+            .select("id,activity_id,due_at,class_id")
+            .in("id", assignmentIds)
+            .eq("class_id", classId)
+        : { data: null };
+
+    const activityIds = (assignments ?? []).map((assignment) => assignment.activity_id);
+    const { data: activities } =
+      activityIds.length > 0
+        ? await supabase
+            .from("activities")
+            .select("id,title,type")
+            .in("id", activityIds)
+            .eq("class_id", classId)
+        : { data: null };
+
+    const assignmentById = new Map((assignments ?? []).map((assignment) => [assignment.id, assignment]));
+    const chatActivityTitleById = new Map(
+      (activities ?? [])
+        .filter((activity) => activity.type === "chat")
+        .map((activity) => [activity.id, activity.title]),
+    );
+    const { data: submissions } =
+      assignmentIds.length > 0
+        ? await supabase
+            .from("submissions")
+            .select("assignment_id")
+            .eq("student_id", user.id)
+            .in("assignment_id", assignmentIds)
+        : { data: null };
+    const submittedAssignmentIds = new Set((submissions ?? []).map((submission) => submission.assignment_id));
+
+    const mappedStudentAssignments: Array<ChatAssignmentSummary | null> = (recipients ?? []).map(
+      (recipient) => {
+        const assignment = assignmentById.get(recipient.assignment_id);
+        if (!assignment) {
+          return null;
+        }
+        const title = chatActivityTitleById.get(assignment.activity_id);
+        if (!title) {
+          return null;
+        }
+        return {
+          assignmentId: assignment.id,
+          title,
+          dueAt: assignment.due_at,
+          status: submittedAssignmentIds.has(assignment.id) ? "submitted" : recipient.status,
+        };
+      },
+    );
+
+    studentChatAssignments = mappedStudentAssignments.filter(
+      (value): value is ChatAssignmentSummary => value !== null,
+    );
+  }
+
   const errorMessage =
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
   const uploadNotice =
@@ -80,6 +196,7 @@ export default async function ClassOverviewPage({
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
         activeNav="dashboard"
+        classContext={{ classId: classRow.id, isTeacher }}
         breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: classRow.title }]}
       />
       <div className="mx-auto w-full max-w-5xl px-6 py-16">
@@ -146,6 +263,93 @@ export default async function ClassOverviewPage({
               {classRow.description || "Add a class description and upload materials to begin."}
             </p>
           </div>
+        </section>
+
+        <section className="mt-10 rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">AI Chat</h2>
+              <p className="mt-2 text-sm text-slate-400">
+                {publishedBlueprint
+                  ? "Use open practice chat or assignment chat grounded in the published blueprint."
+                  : "Publish the blueprint to unlock chat experiences."}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={`/classes/${classRow.id}/chat`}
+                className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-white/30 hover:bg-white/5"
+              >
+                Open practice chat
+              </Link>
+              {isTeacher ? (
+                <Link
+                  href={`/classes/${classRow.id}/activities/chat/new`}
+                  className="rounded-xl bg-cyan-400/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
+                >
+                  Create chat assignment
+                </Link>
+              ) : null}
+            </div>
+          </div>
+
+          {isTeacher ? (
+            <div className="mt-5 space-y-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Recent chat assignments</p>
+              {teacherChatAssignments.length > 0 ? (
+                teacherChatAssignments.slice(0, 5).map((assignment) => (
+                  <div
+                    key={assignment.assignmentId}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
+                      <p className="text-xs text-slate-500">{formatDueDate(assignment.dueAt)}</p>
+                    </div>
+                    <Link
+                      href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/review`}
+                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
+                    >
+                      Review
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">
+                  No chat assignments yet. Create one to start collecting student submissions.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="mt-5 space-y-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Your chat assignments</p>
+              {studentChatAssignments.length > 0 ? (
+                studentChatAssignments.slice(0, 5).map((assignment) => (
+                  <div
+                    key={assignment.assignmentId}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
+                      <p className="text-xs text-slate-500">
+                        {formatDueDate(assignment.dueAt)} · Status: {assignment.status ?? "assigned"}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/chat`}
+                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
+                    >
+                      Open
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">
+                  No chat assignments yet. Use open practice chat while you wait.
+                </p>
+              )}
+            </div>
+          )}
         </section>
 
         {isTeacher ? (
@@ -228,9 +432,14 @@ export default async function ClassOverviewPage({
             <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
               <h2 className="text-lg font-semibold">Student hub</h2>
               <p className="mt-2 text-sm text-slate-400">
-                Your assignments and practice activities will appear here once the blueprint is
-                published.
+                Use open practice chat, then complete chat assignments as they are published.
               </p>
+              <Link
+                href={`/classes/${classRow.id}/chat`}
+                className="mt-4 inline-flex rounded-xl border border-cyan-400/40 px-4 py-2 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
+              >
+                Open practice chat
+              </Link>
             </div>
             <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
               <h2 className="text-lg font-semibold">Blueprint status</h2>

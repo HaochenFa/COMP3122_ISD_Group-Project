@@ -1,3 +1,5 @@
+import { extractSingleJsonObject } from "@/lib/json/extract-object";
+
 export type BlueprintObjective = {
   statement: string;
   level?: string;
@@ -129,12 +131,10 @@ export function validateBlueprintPayload(
 }
 
 function extractJson(raw: string) {
-  const first = raw.indexOf("{");
-  const last = raw.lastIndexOf("}");
-  if (first === -1 || last === -1 || last <= first) {
-    throw new Error("No JSON object found in AI response.");
-  }
-  return raw.slice(first, last + 1);
+  return extractSingleJsonObject(raw, {
+    notFoundMessage: "No JSON object found in AI response.",
+    multipleMessage: "Multiple JSON objects found in AI response.",
+  });
 }
 
 function isNonEmptyString(value: unknown) {

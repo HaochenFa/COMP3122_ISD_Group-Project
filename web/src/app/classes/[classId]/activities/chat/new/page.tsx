@@ -1,0 +1,143 @@
+import { redirect } from "next/navigation";
+import AuthHeader from "@/app/components/AuthHeader";
+import PendingSubmitButton from "@/app/components/PendingSubmitButton";
+import { createChatAssignment } from "@/app/classes/[classId]/chat/actions";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
+
+type SearchParams = {
+  error?: string;
+};
+
+export default async function NewChatAssignmentPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ classId: string }>;
+  searchParams?: Promise<SearchParams>;
+}) {
+  const { classId } = await params;
+  const resolvedSearchParams = await searchParams;
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: classRow } = await supabase
+    .from("classes")
+    .select("id,title,owner_id")
+    .eq("id", classId)
+    .single();
+
+  if (!classRow) {
+    redirect("/dashboard");
+  }
+
+  const { data: enrollment } = await supabase
+    .from("enrollments")
+    .select("role")
+    .eq("class_id", classId)
+    .eq("user_id", user.id)
+    .single();
+
+  const isTeacher =
+    classRow.owner_id === user.id || enrollment?.role === "teacher" || enrollment?.role === "ta";
+
+  if (!isTeacher) {
+    redirect(`/classes/${classId}?error=${encodeURIComponent("Teacher access required.")}`);
+  }
+
+  const { count: studentCount } = await supabase
+    .from("enrollments")
+    .select("id", { count: "exact", head: true })
+    .eq("class_id", classId)
+    .eq("role", "student");
+
+  const errorMessage =
+    typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <AuthHeader
+        activeNav="dashboard"
+        classContext={{ classId: classRow.id, isTeacher }}
+        breadcrumbs={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: classRow.title, href: `/classes/${classRow.id}` },
+          { label: "New Chat Assignment" },
+        ]}
+      />
+
+      <div className="mx-auto w-full max-w-3xl px-6 py-16">
+        <header className="mb-8 space-y-2">
+          <p className="text-sm font-medium text-slate-400">Teacher Studio</p>
+          <h1 className="text-3xl font-semibold">Create Chat Assignment</h1>
+          <p className="text-sm text-slate-400">
+            Assigns to all enrolled students in this class.
+          </p>
+          <p className="text-xs text-slate-500">
+            Target students: {studentCount ?? 0}
+          </p>
+        </header>
+
+        {errorMessage ? (
+          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+            {errorMessage}
+          </div>
+        ) : null}
+
+        <form action={createChatAssignment.bind(null, classId)} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm text-slate-300" htmlFor="title">
+              Assignment Title
+            </label>
+            <input
+              id="title"
+              name="title"
+              required
+              placeholder="Week 2 Guided Chat: Limits"
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm text-slate-300" htmlFor="instructions">
+              Instructions
+            </label>
+            <textarea
+              id="instructions"
+              name="instructions"
+              required
+              rows={5}
+              placeholder="Ask at least three questions about formal limit definitions, then summarize what changed in your understanding."
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm text-slate-300" htmlFor="due_at">
+              Due Date (Optional)
+            </label>
+            <input
+              id="due_at"
+              name="due_at"
+              type="datetime-local"
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+            />
+          </div>
+
+          <PendingSubmitButton
+            label="Create and Assign"
+            pendingLabel="Creating assignment..."
+            className="rounded-xl bg-cyan-400/90 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-400/50"
+          />
+        </form>
+      </div>
+    </div>
+  );
+}
