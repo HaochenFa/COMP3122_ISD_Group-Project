@@ -9,7 +9,7 @@ on submissions (
   student_id,
   (
     case
-      when (content ->> 'attemptNumber') ~ '^[0-9]+$'
+      when (content ->> 'attemptNumber') ~ '^[1-9][0-9]*$'
         then (content ->> 'attemptNumber')::int
       else null
     end

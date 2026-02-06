@@ -205,6 +205,7 @@ export default async function AssignmentReviewPage({
           .in("student_id", recipientIds)
           .order("submitted_at", { ascending: true })
       : { data: null };
+  type SubmissionRow = NonNullable<typeof submissions>[number];
 
   const submissionIds = (submissions ?? []).map((submission) => submission.id);
   const { data: feedbackRows } =
@@ -260,7 +261,7 @@ export default async function AssignmentReviewPage({
     return `/classes/${classId}/assignments/${assignmentId}/review${serialized ? `?${serialized}` : ""}`;
   };
 
-  const submissionByStudentId = new Map<string, typeof submissions>();
+  const submissionByStudentId = new Map<string, SubmissionRow[]>();
   (submissions ?? []).forEach((submission) => {
     const current = submissionByStudentId.get(submission.student_id) ?? [];
     current.push(submission);

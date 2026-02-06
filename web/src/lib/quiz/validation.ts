@@ -19,7 +19,7 @@ export function parseQuestionCount(raw: FormDataEntryValue | null) {
   }
 
   const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || Number.isNaN(parsed)) {
+  if (!Number.isInteger(parsed)) {
     throw new Error("Question count must be an integer.");
   }
 
@@ -70,7 +70,7 @@ export function parseHighlights(raw: FormDataEntryValue | null) {
 
 export function validateQuizGenerationPayload(
   payload: unknown,
-): { ok: true; errors: string[]; value: QuizGenerationPayload } | { ok: false; errors: string[] } {
+): { ok: true; value: QuizGenerationPayload } | { ok: false; errors: string[] } {
   const errors: string[] = [];
   if (!payload || typeof payload !== "object") {
     return { ok: false, errors: ["Payload must be an object."] };
@@ -111,7 +111,7 @@ export function validateQuizGenerationPayload(
     });
   }
 
-  return errors.length > 0 ? { ok: false, errors } : { ok: true, errors, value: data };
+  return errors.length > 0 ? { ok: false, errors } : { ok: true, value: data };
 }
 
 export function parseQuizDraftPayload(raw: FormDataEntryValue | null) {
