@@ -385,7 +385,10 @@ export async function publishQuizActivity(classId: string, activityId: string) {
     .order("order_index", { ascending: true });
 
   if (questionsError) {
-    redirectWithError(`/classes/${classId}/activities/quiz/${activityId}/edit`, questionsError.message);
+    redirectWithError(
+      `/classes/${classId}/activities/quiz/${activityId}/edit`,
+      questionsError.message,
+    );
     return;
   }
 
@@ -403,14 +406,21 @@ export async function publishQuizActivity(classId: string, activityId: string) {
     .eq("id", activityId);
 
   if (publishError) {
-    redirectWithError(`/classes/${classId}/activities/quiz/${activityId}/edit`, publishError.message);
+    redirectWithError(
+      `/classes/${classId}/activities/quiz/${activityId}/edit`,
+      publishError.message,
+    );
     return;
   }
 
   redirect(`/classes/${classId}/activities/quiz/${activityId}/edit?published=1`);
 }
 
-export async function createQuizAssignment(classId: string, activityId: string, formData: FormData) {
+export async function createQuizAssignment(
+  classId: string,
+  activityId: string,
+  formData: FormData,
+) {
   const { supabase, user } = await requireAuthenticatedUser();
   if (!user) {
     redirect("/login");
@@ -714,7 +724,10 @@ export async function reviewQuizSubmission(
     .single();
 
   if (submissionError || !submission) {
-    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/review`, "Submission not found.");
+    redirectWithError(
+      `/classes/${classId}/assignments/${assignmentId}/review`,
+      "Submission not found.",
+    );
     return;
   }
 
@@ -725,7 +738,10 @@ export async function reviewQuizSubmission(
       .eq("id", submission.id);
 
     if (scoreError) {
-      redirectWithError(`/classes/${classId}/assignments/${assignmentId}/review`, scoreError.message);
+      redirectWithError(
+        `/classes/${classId}/assignments/${assignmentId}/review`,
+        scoreError.message,
+      );
       return;
     }
   }
@@ -743,7 +759,10 @@ export async function reviewQuizSubmission(
     });
 
     if (feedbackError) {
-      redirectWithError(`/classes/${classId}/assignments/${assignmentId}/review`, feedbackError.message);
+      redirectWithError(
+        `/classes/${classId}/assignments/${assignmentId}/review`,
+        feedbackError.message,
+      );
       return;
     }
   }

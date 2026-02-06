@@ -69,7 +69,10 @@ describe("createWholeClassAssignment", () => {
   it("rolls back assignment creation when student lookup fails", async () => {
     const fromMock = vi.fn();
     const assignmentInsertBuilder = makeBuilder({ data: { id: "assignment-1" }, error: null });
-    const studentsBuilder = makeBuilder({ data: null, error: { message: "student lookup failed" } });
+    const studentsBuilder = makeBuilder({
+      data: null,
+      error: { message: "student lookup failed" },
+    });
     const rollbackBuilder = makeBuilder({ error: null });
 
     let assignmentsCalls = 0;

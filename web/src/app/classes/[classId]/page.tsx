@@ -136,8 +136,12 @@ export default async function ClassOverviewPage({
       })
       .filter((value): value is ActivityAssignmentSummary => value !== null);
 
-    teacherChatAssignments = mappedAssignments.filter((assignment) => assignment.activityType === "chat");
-    teacherQuizAssignments = mappedAssignments.filter((assignment) => assignment.activityType === "quiz");
+    teacherChatAssignments = mappedAssignments.filter(
+      (assignment) => assignment.activityType === "chat",
+    );
+    teacherQuizAssignments = mappedAssignments.filter(
+      (assignment) => assignment.activityType === "quiz",
+    );
   } else {
     const { data: recipients } = await supabase
       .from("assignment_recipients")
@@ -166,7 +170,9 @@ export default async function ClassOverviewPage({
             .eq("class_id", classId)
         : { data: null };
 
-    const assignmentById = new Map((assignments ?? []).map((assignment) => [assignment.id, assignment]));
+    const assignmentById = new Map(
+      (assignments ?? []).map((assignment) => [assignment.id, assignment]),
+    );
     const activityById = new Map((activities ?? []).map((activity) => [activity.id, activity]));
     const { data: submissions } =
       assignmentIds.length > 0
@@ -185,53 +191,57 @@ export default async function ClassOverviewPage({
       );
     });
 
-    const mappedStudentAssignments: Array<ActivityAssignmentSummary | null> = (recipients ?? []).map(
-      (recipient) => {
-        const assignment = assignmentById.get(recipient.assignment_id);
-        if (!assignment) {
-          return null;
-        }
-        const activity = activityById.get(assignment.activity_id);
-        if (!activity || (activity.type !== "chat" && activity.type !== "quiz")) {
-          return null;
-        }
+    const mappedStudentAssignments: Array<ActivityAssignmentSummary | null> = (
+      recipients ?? []
+    ).map((recipient) => {
+      const assignment = assignmentById.get(recipient.assignment_id);
+      if (!assignment) {
+        return null;
+      }
+      const activity = activityById.get(assignment.activity_id);
+      if (!activity || (activity.type !== "chat" && activity.type !== "quiz")) {
+        return null;
+      }
 
-        const submissionCount = submissionCountByAssignmentId.get(assignment.id) ?? 0;
-        const activityConfig =
-          activity.config && typeof activity.config === "object"
-            ? (activity.config as Record<string, unknown>)
-            : {};
-        const attemptLimit =
-          typeof activityConfig.attemptLimit === "number" ? activityConfig.attemptLimit : 2;
+      const submissionCount = submissionCountByAssignmentId.get(assignment.id) ?? 0;
+      const activityConfig =
+        activity.config && typeof activity.config === "object"
+          ? (activity.config as Record<string, unknown>)
+          : {};
+      const attemptLimit =
+        typeof activityConfig.attemptLimit === "number" ? activityConfig.attemptLimit : 2;
 
-        const status =
-          recipient.status === "reviewed"
-            ? "reviewed"
-            : activity.type === "chat"
-              ? submissionCount > 0
+      const status =
+        recipient.status === "reviewed"
+          ? "reviewed"
+          : activity.type === "chat"
+            ? submissionCount > 0
+              ? "submitted"
+              : recipient.status
+            : submissionCount === 0
+              ? recipient.status
+              : submissionCount >= attemptLimit
                 ? "submitted"
-                : recipient.status
-              : submissionCount === 0
-                ? recipient.status
-                : submissionCount >= attemptLimit
-                  ? "submitted"
-                  : "in_progress";
+                : "in_progress";
 
-        return {
-          assignmentId: assignment.id,
-          title: activity.title,
-          dueAt: assignment.due_at,
-          activityType: activity.type,
-          status,
-        };
-      },
-    );
+      return {
+        assignmentId: assignment.id,
+        title: activity.title,
+        dueAt: assignment.due_at,
+        activityType: activity.type,
+        status,
+      };
+    });
 
     const filteredAssignments = mappedStudentAssignments.filter(
       (value): value is ActivityAssignmentSummary => value !== null,
     );
-    studentChatAssignments = filteredAssignments.filter((assignment) => assignment.activityType === "chat");
-    studentQuizAssignments = filteredAssignments.filter((assignment) => assignment.activityType === "quiz");
+    studentChatAssignments = filteredAssignments.filter(
+      (assignment) => assignment.activityType === "chat",
+    );
+    studentQuizAssignments = filteredAssignments.filter(
+      (assignment) => assignment.activityType === "quiz",
+    );
   }
 
   const errorMessage =
@@ -346,7 +356,9 @@ export default async function ClassOverviewPage({
 
           {isTeacher ? (
             <div className="mt-5 space-y-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Recent chat assignments</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                Recent chat assignments
+              </p>
               {teacherChatAssignments.length > 0 ? (
                 teacherChatAssignments.slice(0, 5).map((assignment) => (
                   <div
@@ -373,7 +385,9 @@ export default async function ClassOverviewPage({
             </div>
           ) : (
             <div className="mt-5 space-y-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Your chat assignments</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                Your chat assignments
+              </p>
               {studentChatAssignments.length > 0 ? (
                 studentChatAssignments.slice(0, 5).map((assignment) => (
                   <div
@@ -383,7 +397,8 @@ export default async function ClassOverviewPage({
                     <div>
                       <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
                       <p className="text-xs text-slate-500">
-                        {formatDueDate(assignment.dueAt)} · Status: {formatAssignmentStatus(assignment.status)}
+                        {formatDueDate(assignment.dueAt)} · Status:{" "}
+                        {formatAssignmentStatus(assignment.status)}
                       </p>
                     </div>
                     <Link
@@ -425,7 +440,9 @@ export default async function ClassOverviewPage({
 
           {isTeacher ? (
             <div className="mt-5 space-y-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Recent quiz assignments</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                Recent quiz assignments
+              </p>
               {teacherQuizAssignments.length > 0 ? (
                 teacherQuizAssignments.slice(0, 5).map((assignment) => (
                   <div
@@ -452,7 +469,9 @@ export default async function ClassOverviewPage({
             </div>
           ) : (
             <div className="mt-5 space-y-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Your quiz assignments</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                Your quiz assignments
+              </p>
               {studentQuizAssignments.length > 0 ? (
                 studentQuizAssignments.slice(0, 5).map((assignment) => (
                   <div
@@ -462,7 +481,8 @@ export default async function ClassOverviewPage({
                     <div>
                       <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
                       <p className="text-xs text-slate-500">
-                        {formatDueDate(assignment.dueAt)} · Status: {formatAssignmentStatus(assignment.status)}
+                        {formatDueDate(assignment.dueAt)} · Status:{" "}
+                        {formatAssignmentStatus(assignment.status)}
                       </p>
                     </div>
                     <Link

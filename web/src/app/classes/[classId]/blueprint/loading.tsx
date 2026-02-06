@@ -28,7 +28,10 @@ export default function BlueprintLoading() {
           <div className="h-6 w-28 animate-pulse rounded bg-slate-800" />
           <div className="mt-6 space-y-3">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={`blueprint-topic-skeleton-${index}`} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <div
+                key={`blueprint-topic-skeleton-${index}`}
+                className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"
+              >
                 <div className="h-5 w-40 animate-pulse rounded bg-slate-800" />
                 <div className="mt-3 h-4 w-full animate-pulse rounded bg-slate-800" />
                 <div className="mt-2 h-4 w-5/6 animate-pulse rounded bg-slate-800" />

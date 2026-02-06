@@ -119,7 +119,8 @@ export default async function BlueprintPage({
     .select("status")
     .eq("class_id", classId);
   const materialCount = materials?.length ?? 0;
-  const readyMaterialCount = materials?.filter((material) => material.status === "ready").length ?? 0;
+  const readyMaterialCount =
+    materials?.filter((material) => material.status === "ready").length ?? 0;
   const processingMaterialCount =
     materials?.filter((material) => material.status === "processing").length ?? 0;
   const hasReadyMaterials = readyMaterialCount > 0;

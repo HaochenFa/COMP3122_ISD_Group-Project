@@ -84,7 +84,9 @@ export default async function AssignmentChatPage({
     .maybeSingle();
 
   if (!recipient) {
-    redirect(`/classes/${classId}?error=${encodeURIComponent("You are not assigned to this chat.")}`);
+    redirect(
+      `/classes/${classId}?error=${encodeURIComponent("You are not assigned to this chat.")}`,
+    );
   }
 
   const { data: assignment } = await supabase

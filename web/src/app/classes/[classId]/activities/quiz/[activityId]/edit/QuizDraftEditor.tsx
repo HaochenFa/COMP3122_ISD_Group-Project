@@ -64,7 +64,9 @@ export default function QuizDraftEditor({
 
   const updateQuestion = (index: number, next: Partial<EditableQuestion>) => {
     setQuestions((current) =>
-      current.map((question, position) => (position === index ? { ...question, ...next } : question)),
+      current.map((question, position) =>
+        position === index ? { ...question, ...next } : question,
+      ),
     );
   };
 
@@ -77,7 +79,9 @@ export default function QuizDraftEditor({
         const nextChoices = [...question.choices] as [string, string, string, string];
         nextChoices[choiceIndex] = value;
         const nextAnswer =
-          question.answer && question.choices[choiceIndex] === question.answer ? value : question.answer;
+          question.answer && question.choices[choiceIndex] === question.answer
+            ? value
+            : question.answer;
         return {
           ...question,
           choices: nextChoices,
@@ -185,7 +189,9 @@ export default function QuizDraftEditor({
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div className="space-y-1">
-                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Correct Answer</label>
+                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                    Correct Answer
+                  </label>
                   <select
                     value={question.answer}
                     onChange={(event) =>
@@ -206,7 +212,9 @@ export default function QuizDraftEditor({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Explanation</label>
+                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                    Explanation
+                  </label>
                   <textarea
                     value={question.explanation}
                     onChange={(event) =>
@@ -263,7 +271,10 @@ export default function QuizDraftEditor({
             </span>
           )}
 
-          <form action={createQuizAssignment.bind(null, classId, activityId)} className="flex flex-wrap items-center gap-3">
+          <form
+            action={createQuizAssignment.bind(null, classId, activityId)}
+            className="flex flex-wrap items-center gap-3"
+          >
             <input
               name="due_at"
               type="datetime-local"

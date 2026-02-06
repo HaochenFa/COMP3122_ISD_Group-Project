@@ -77,7 +77,9 @@ export default async function EditQuizDraftPage({
       : {};
 
   const initialInstructions =
-    typeof config.instructions === "string" ? config.instructions : "Review and refine quiz questions.";
+    typeof config.instructions === "string"
+      ? config.instructions
+      : "Review and refine quiz questions.";
 
   const createdMessage =
     resolvedSearchParams?.created === "1"

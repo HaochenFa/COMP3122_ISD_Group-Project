@@ -1,4 +1,9 @@
-import type { ChatAssignmentSubmissionContent, ChatModelResponse, ChatRole, ChatTurn } from "@/lib/chat/types";
+import type {
+  ChatAssignmentSubmissionContent,
+  ChatModelResponse,
+  ChatRole,
+  ChatTurn,
+} from "@/lib/chat/types";
 import { extractSingleJsonObject } from "@/lib/json/extract-object";
 
 export const MAX_CHAT_MESSAGE_CHARS = 1200;

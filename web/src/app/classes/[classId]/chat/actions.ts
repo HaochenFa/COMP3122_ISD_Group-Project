@@ -448,7 +448,10 @@ export async function submitChatAssignment(
       .eq("id", existingSubmission.id);
 
     if (updateError) {
-      redirectWithError(`/classes/${classId}/assignments/${assignmentId}/chat`, updateError.message);
+      redirectWithError(
+        `/classes/${classId}/assignments/${assignmentId}/chat`,
+        updateError.message,
+      );
       return;
     }
   } else {
@@ -460,7 +463,10 @@ export async function submitChatAssignment(
     });
 
     if (insertError) {
-      redirectWithError(`/classes/${classId}/assignments/${assignmentId}/chat`, insertError.message);
+      redirectWithError(
+        `/classes/${classId}/assignments/${assignmentId}/chat`,
+        insertError.message,
+      );
       return;
     }
   }
@@ -535,7 +541,10 @@ export async function reviewChatSubmission(
     .single();
 
   if (submissionError || !submission) {
-    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/review`, "Submission not found.");
+    redirectWithError(
+      `/classes/${classId}/assignments/${assignmentId}/review`,
+      "Submission not found.",
+    );
     return;
   }
 
@@ -547,7 +556,10 @@ export async function reviewChatSubmission(
     .single();
 
   if (assignmentError || !assignment) {
-    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/review`, "Assignment not found.");
+    redirectWithError(
+      `/classes/${classId}/assignments/${assignmentId}/review`,
+      "Assignment not found.",
+    );
     return;
   }
 
@@ -573,7 +585,10 @@ export async function reviewChatSubmission(
   });
 
   if (feedbackError) {
-    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/review`, feedbackError.message);
+    redirectWithError(
+      `/classes/${classId}/assignments/${assignmentId}/review`,
+      feedbackError.message,
+    );
     return;
   }
 

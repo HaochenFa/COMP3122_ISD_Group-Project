@@ -42,9 +42,7 @@ export default async function RegisterPage({
           </div>
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-900/40">
             <div className="mb-8 space-y-2">
-              <p className="text-sm font-medium text-slate-400">
-                Launch Your Class
-              </p>
+              <p className="text-sm font-medium text-slate-400">Launch Your Class</p>
               <h1 className="text-3xl font-semibold">Create an account</h1>
               <p className="text-sm text-slate-400">
                 Start building course blueprints from your materials.

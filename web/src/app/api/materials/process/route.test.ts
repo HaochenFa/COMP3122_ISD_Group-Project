@@ -175,13 +175,17 @@ describe("POST /api/materials/process", () => {
         qualityScore: null,
       },
     ]);
-    generateEmbeddingsWithFallback.mockRejectedValue(new Error("No embedding providers are configured."));
+    generateEmbeddingsWithFallback.mockRejectedValue(
+      new Error("No embedding providers are configured."),
+    );
   });
 
   it("marks material as failed when processing hits a terminal configuration error", async () => {
     const { POST } = await import("@/app/api/materials/process/route");
 
-    const response = await POST(new Request("http://localhost/api/materials/process", { method: "POST" }));
+    const response = await POST(
+      new Request("http://localhost/api/materials/process", { method: "POST" }),
+    );
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -251,7 +255,9 @@ describe("POST /api/materials/process", () => {
     process.env.CRON_SECRET = "test-secret";
     const { POST } = await import("@/app/api/materials/process/route");
 
-    const response = await POST(new Request("http://localhost/api/materials/process", { method: "POST" }));
+    const response = await POST(
+      new Request("http://localhost/api/materials/process", { method: "POST" }),
+    );
     const payload = await response.json();
 
     expect(response.status).toBe(401);

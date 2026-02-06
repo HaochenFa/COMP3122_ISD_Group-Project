@@ -83,7 +83,8 @@ h3 {
 .hero-grid {
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
     linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(circle at 20% 20%, black, transparent 65%);
@@ -103,8 +104,16 @@ h3 {
   position: absolute;
   inset: -25%;
   background:
-    radial-gradient(820px circle at var(--cursor-x) var(--cursor-y), rgba(34, 211, 238, 0.28), transparent 68%),
-    radial-gradient(1100px circle at calc(var(--cursor-x) + 18%) calc(var(--cursor-y) + 8%), rgba(14, 165, 233, 0.22), transparent 72%),
+    radial-gradient(
+      820px circle at var(--cursor-x) var(--cursor-y),
+      rgba(34, 211, 238, 0.28),
+      transparent 68%
+    ),
+    radial-gradient(
+      1100px circle at calc(var(--cursor-x) + 18%) calc(var(--cursor-y) + 8%),
+      rgba(14, 165, 233, 0.22),
+      transparent 72%
+    ),
     radial-gradient(1400px circle at 20% 80%, rgba(56, 189, 248, 0.16), transparent 75%);
   transition: opacity 0.4s ease;
 }
@@ -113,7 +122,8 @@ h3 {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
     linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(circle at var(--cursor-x) var(--cursor-y), black, transparent 75%);
@@ -123,7 +133,12 @@ h3 {
 .ambient-bg .ambient-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 20%, rgba(2, 6, 23, 0), rgba(2, 6, 23, 0.65) 55%, #020617 100%);
+  background: radial-gradient(
+    circle at 50% 20%,
+    rgba(2, 6, 23, 0),
+    rgba(2, 6, 23, 0.65) 55%,
+    #020617 100%
+  );
 }
 
 @keyframes hero-float {

@@ -61,11 +61,19 @@ describe("QuizAssignmentPage", () => {
         return makeBuilder({ data: { role: "student" }, error: null });
       }
       if (table === "assignment_recipients") {
-        return makeBuilder({ data: { assignment_id: "assignment-1", status: "assigned" }, error: null });
+        return makeBuilder({
+          data: { assignment_id: "assignment-1", status: "assigned" },
+          error: null,
+        });
       }
       if (table === "assignments") {
         return makeBuilder({
-          data: { id: "assignment-1", class_id: "class-1", activity_id: "activity-1", due_at: null },
+          data: {
+            id: "assignment-1",
+            class_id: "class-1",
+            activity_id: "activity-1",
+            due_at: null,
+          },
           error: null,
         });
       }
@@ -127,11 +135,19 @@ describe("QuizAssignmentPage", () => {
         return makeBuilder({ data: { role: "student" }, error: null });
       }
       if (table === "assignment_recipients") {
-        return makeBuilder({ data: { assignment_id: "assignment-1", status: "assigned" }, error: null });
+        return makeBuilder({
+          data: { assignment_id: "assignment-1", status: "assigned" },
+          error: null,
+        });
       }
       if (table === "assignments") {
         return makeBuilder({
-          data: { id: "assignment-1", class_id: "class-1", activity_id: "activity-1", due_at: null },
+          data: {
+            id: "assignment-1",
+            class_id: "class-1",
+            activity_id: "activity-1",
+            due_at: null,
+          },
           error: null,
         });
       }
@@ -165,8 +181,18 @@ describe("QuizAssignmentPage", () => {
       if (table === "submissions") {
         return makeBuilder({
           data: [
-            { id: "s1", score: 50, content: { answers: [] }, submitted_at: "2026-01-01T00:00:00.000Z" },
-            { id: "s2", score: 100, content: { answers: [] }, submitted_at: "2026-01-01T00:01:00.000Z" },
+            {
+              id: "s1",
+              score: 50,
+              content: { answers: [] },
+              submitted_at: "2026-01-01T00:00:00.000Z",
+            },
+            {
+              id: "s2",
+              score: 100,
+              content: { answers: [] },
+              submitted_at: "2026-01-01T00:01:00.000Z",
+            },
           ],
           error: null,
         });

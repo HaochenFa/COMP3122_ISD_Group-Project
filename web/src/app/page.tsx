@@ -28,7 +28,10 @@ export default async function HomePage() {
             STEM Learning Platform
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <Link className="ui-motion-color text-slate-200 hover:text-white" href={headerPrimaryHref}>
+            <Link
+              className="ui-motion-color text-slate-200 hover:text-white"
+              href={headerPrimaryHref}
+            >
               {headerPrimaryLabel}
             </Link>
             <Link
@@ -47,9 +50,7 @@ export default async function HomePage() {
               Blueprint-first workflow
             </div>
             <div className="space-y-6">
-              <p className="text-sm font-medium text-slate-400">
-                For teachers and students
-              </p>
+              <p className="text-sm font-medium text-slate-400">For teachers and students</p>
               <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">
                 Turn materials into
                 <span className="text-cyan-300"> structured learning</span>, not generic AI.

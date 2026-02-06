@@ -10,7 +10,9 @@ export type PublishedBlueprintContext = {
   blueprintContext: string;
 };
 
-export async function loadPublishedBlueprintContext(classId: string): Promise<PublishedBlueprintContext> {
+export async function loadPublishedBlueprintContext(
+  classId: string,
+): Promise<PublishedBlueprintContext> {
   const supabase = await createServerSupabaseClient();
 
   const { data: blueprint, error: blueprintError } = await supabase

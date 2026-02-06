@@ -25,7 +25,7 @@ export default function PendingSubmitButton({
       aria-busy={pending}
       className={`ui-motion-color ${className}`}
     >
-      {pending ? pendingLabel ?? `${label}...` : label}
+      {pending ? (pendingLabel ?? `${label}...`) : label}
     </button>
   );
 }

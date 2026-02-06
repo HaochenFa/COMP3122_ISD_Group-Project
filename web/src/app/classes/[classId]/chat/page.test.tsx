@@ -55,7 +55,13 @@ describe("OpenPracticeChatPage", () => {
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({
-          data: { id: "class-1", title: "Calculus", subject: "Math", level: "College", owner_id: "t1" },
+          data: {
+            id: "class-1",
+            title: "Calculus",
+            subject: "Math",
+            level: "College",
+            owner_id: "t1",
+          },
           error: null,
         });
       }
@@ -83,7 +89,13 @@ describe("OpenPracticeChatPage", () => {
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({
-          data: { id: "class-1", title: "Calculus", subject: "Math", level: "College", owner_id: "t1" },
+          data: {
+            id: "class-1",
+            title: "Calculus",
+            subject: "Math",
+            level: "College",
+            owner_id: "t1",
+          },
           error: null,
         });
       }

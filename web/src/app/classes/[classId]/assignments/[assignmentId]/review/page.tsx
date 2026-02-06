@@ -80,14 +80,13 @@ function parseQuizSubmissionContent(content: unknown): ParsedQuizSubmission {
 
   const answers = Array.isArray(answersRaw)
     ? answersRaw
-        .filter(
-          (answer): answer is { questionId: string; selectedChoice: string } =>
-            Boolean(
-              answer &&
-                typeof answer === "object" &&
-                typeof (answer as { questionId?: unknown }).questionId === "string" &&
-                typeof (answer as { selectedChoice?: unknown }).selectedChoice === "string",
-            ),
+        .filter((answer): answer is { questionId: string; selectedChoice: string } =>
+          Boolean(
+            answer &&
+            typeof answer === "object" &&
+            typeof (answer as { questionId?: unknown }).questionId === "string" &&
+            typeof (answer as { selectedChoice?: unknown }).selectedChoice === "string",
+          ),
         )
         .map((answer) => ({
           questionId: answer.questionId,
@@ -268,7 +267,10 @@ export default async function AssignmentReviewPage({
     submissionByStudentId.set(submission.student_id, current);
   });
 
-  const quizQuestionsById = new Map<string, { question: string; answer: string; explanation: string }>();
+  const quizQuestionsById = new Map<
+    string,
+    { question: string; answer: string; explanation: string }
+  >();
   if (activity.type === "quiz") {
     const { data: questionRows } = await supabase
       .from("quiz_questions")
@@ -301,7 +303,9 @@ export default async function AssignmentReviewPage({
           <p className="text-sm font-medium text-slate-400">Teacher Review</p>
           <h1 className="text-3xl font-semibold">{activity.title}</h1>
           <p className="text-sm text-slate-400">
-            {assignment.due_at ? `Due ${new Date(assignment.due_at).toLocaleString()}` : "No due date"}
+            {assignment.due_at
+              ? `Due ${new Date(assignment.due_at).toLocaleString()}`
+              : "No due date"}
           </p>
         </header>
 
@@ -324,7 +328,8 @@ export default async function AssignmentReviewPage({
         {totalRecipients > 0 ? (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-900/50 px-4 py-3 text-sm text-slate-300">
             <p>
-              Showing {rangeStart + 1}-{Math.min(rangeStart + (recipients?.length ?? 0), totalRecipients)} of{" "}
+              Showing {rangeStart + 1}-
+              {Math.min(rangeStart + (recipients?.length ?? 0), totalRecipients)} of{" "}
               {totalRecipients} students
             </p>
             {totalPages > 1 ? (
@@ -401,30 +406,40 @@ export default async function AssignmentReviewPage({
                     ) : (
                       <div className="space-y-4">
                         <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Transcript</p>
-                          {parseChatSubmissionContent(latestSubmission.content).transcript.length === 0 ? (
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            Transcript
+                          </p>
+                          {parseChatSubmissionContent(latestSubmission.content).transcript
+                            .length === 0 ? (
                             <p className="mt-2 text-sm text-slate-400">No transcript saved.</p>
                           ) : (
                             <div className="mt-3 space-y-3">
-                              {parseChatSubmissionContent(latestSubmission.content).transcript.map((turn, index) => (
-                                <div
-                                  key={`${latestSubmission.id}-${turn.role}-${turn.createdAt}-${index}`}
-                                  className="rounded-xl border border-white/10 bg-slate-900/70 p-3"
-                                >
-                                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                                    {turn.role === "student" ? "Student" : "AI Tutor"}
-                                  </p>
-                                  <p className="mt-2 whitespace-pre-wrap text-sm text-slate-100">{turn.message}</p>
-                                </div>
-                              ))}
+                              {parseChatSubmissionContent(latestSubmission.content).transcript.map(
+                                (turn, index) => (
+                                  <div
+                                    key={`${latestSubmission.id}-${turn.role}-${turn.createdAt}-${index}`}
+                                    className="rounded-xl border border-white/10 bg-slate-900/70 p-3"
+                                  >
+                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                      {turn.role === "student" ? "Student" : "AI Tutor"}
+                                    </p>
+                                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-100">
+                                      {turn.message}
+                                    </p>
+                                  </div>
+                                ),
+                              )}
                             </div>
                           )}
                         </div>
 
                         <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Reflection</p>
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            Reflection
+                          </p>
                           <p className="mt-2 whitespace-pre-wrap text-sm text-slate-100">
-                            {parseChatSubmissionContent(latestSubmission.content).reflection || "No reflection submitted."}
+                            {parseChatSubmissionContent(latestSubmission.content).reflection ||
+                              "No reflection submitted."}
                           </p>
                         </div>
 
@@ -435,7 +450,10 @@ export default async function AssignmentReviewPage({
                           <input type="hidden" name="assignment_id" value={assignmentId} />
 
                           <div className="space-y-2">
-                            <label className="text-sm text-slate-300" htmlFor={`score-${latestSubmission.id}`}>
+                            <label
+                              className="text-sm text-slate-300"
+                              htmlFor={`score-${latestSubmission.id}`}
+                            >
                               Score (0-100)
                             </label>
                             <input
@@ -450,29 +468,38 @@ export default async function AssignmentReviewPage({
                           </div>
 
                           <div className="space-y-2">
-                            <label className="text-sm text-slate-300" htmlFor={`comment-${latestSubmission.id}`}>
+                            <label
+                              className="text-sm text-slate-300"
+                              htmlFor={`comment-${latestSubmission.id}`}
+                            >
                               Comment
                             </label>
                             <textarea
                               id={`comment-${latestSubmission.id}`}
                               name="comment"
                               rows={3}
-                              defaultValue={latestFeedbackBySubmission.get(latestSubmission.id)?.comment ?? ""}
+                              defaultValue={
+                                latestFeedbackBySubmission.get(latestSubmission.id)?.comment ?? ""
+                              }
                               className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <label className="text-sm text-slate-300" htmlFor={`highlights-${latestSubmission.id}`}>
+                            <label
+                              className="text-sm text-slate-300"
+                              htmlFor={`highlights-${latestSubmission.id}`}
+                            >
                               Highlights (one per line)
                             </label>
                             <textarea
                               id={`highlights-${latestSubmission.id}`}
                               name="highlights"
                               rows={3}
-                              defaultValue={
-                                (latestFeedbackBySubmission.get(latestSubmission.id)?.highlights ?? []).join("\n")
-                              }
+                              defaultValue={(
+                                latestFeedbackBySubmission.get(latestSubmission.id)?.highlights ??
+                                []
+                              ).join("\n")}
                               className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                             />
                           </div>
@@ -504,7 +531,8 @@ export default async function AssignmentReviewPage({
                             className="rounded-2xl border border-white/10 bg-slate-950/50 p-4"
                           >
                             <p className="text-sm font-semibold text-slate-100">
-                              Attempt {parsed.attemptNumber} · Score: {attempt.score ?? parsed.scorePercent}%
+                              Attempt {parsed.attemptNumber} · Score:{" "}
+                              {attempt.score ?? parsed.scorePercent}%
                             </p>
                             <p className="text-xs text-slate-500">
                               Submitted {new Date(attempt.submitted_at).toLocaleString()}
@@ -513,7 +541,9 @@ export default async function AssignmentReviewPage({
                             <div className="mt-3 space-y-3">
                               {parsed.answers.map((answer, answerIndex) => {
                                 const question = quizQuestionsById.get(answer.questionId);
-                                const isCorrect = question ? answer.selectedChoice === question.answer : false;
+                                const isCorrect = question
+                                  ? answer.selectedChoice === question.answer
+                                  : false;
                                 return (
                                   <div
                                     key={`${attempt.id}-${answer.questionId}-${answerIndex}`}
@@ -522,13 +552,21 @@ export default async function AssignmentReviewPage({
                                     <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                       Question {answerIndex + 1}
                                     </p>
-                                    <p className="mt-1 text-sm text-slate-200">{question?.question ?? "Unknown question"}</p>
-                                    <p className="mt-2 text-sm text-slate-300">Selected: {answer.selectedChoice}</p>
-                                    <p className={`text-sm ${isCorrect ? "text-emerald-300" : "text-rose-300"}`}>
+                                    <p className="mt-1 text-sm text-slate-200">
+                                      {question?.question ?? "Unknown question"}
+                                    </p>
+                                    <p className="mt-2 text-sm text-slate-300">
+                                      Selected: {answer.selectedChoice}
+                                    </p>
+                                    <p
+                                      className={`text-sm ${isCorrect ? "text-emerald-300" : "text-rose-300"}`}
+                                    >
                                       Correct answer: {question?.answer ?? "Unavailable"}
                                     </p>
                                     {question?.explanation ? (
-                                      <p className="mt-1 text-xs text-slate-400">{question.explanation}</p>
+                                      <p className="mt-1 text-xs text-slate-400">
+                                        {question.explanation}
+                                      </p>
                                     ) : null}
                                   </div>
                                 );
@@ -542,7 +580,10 @@ export default async function AssignmentReviewPage({
                               <input type="hidden" name="assignment_id" value={assignmentId} />
 
                               <div className="space-y-2">
-                                <label className="text-sm text-slate-300" htmlFor={`quiz-score-${attempt.id}`}>
+                                <label
+                                  className="text-sm text-slate-300"
+                                  htmlFor={`quiz-score-${attempt.id}`}
+                                >
                                   Override score (0-100)
                                 </label>
                                 <input
@@ -557,7 +598,10 @@ export default async function AssignmentReviewPage({
                               </div>
 
                               <div className="space-y-2">
-                                <label className="text-sm text-slate-300" htmlFor={`quiz-comment-${attempt.id}`}>
+                                <label
+                                  className="text-sm text-slate-300"
+                                  htmlFor={`quiz-comment-${attempt.id}`}
+                                >
                                   Comment
                                 </label>
                                 <textarea
@@ -570,7 +614,10 @@ export default async function AssignmentReviewPage({
                               </div>
 
                               <div className="space-y-2">
-                                <label className="text-sm text-slate-300" htmlFor={`quiz-highlights-${attempt.id}`}>
+                                <label
+                                  className="text-sm text-slate-300"
+                                  htmlFor={`quiz-highlights-${attempt.id}`}
+                                >
                                   Highlights (one per line)
                                 </label>
                                 <textarea

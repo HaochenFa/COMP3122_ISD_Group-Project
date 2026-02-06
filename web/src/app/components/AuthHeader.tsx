@@ -18,8 +18,7 @@ type AuthHeaderProps = {
 };
 
 function getNavClass(isActive: boolean) {
-  const base =
-    "ui-motion-color rounded-full border px-4 py-2 text-xs font-medium";
+  const base = "ui-motion-color rounded-full border px-4 py-2 text-xs font-medium";
   if (isActive) {
     return `${base} border-cyan-400/50 bg-cyan-400/10 text-cyan-100`;
   }

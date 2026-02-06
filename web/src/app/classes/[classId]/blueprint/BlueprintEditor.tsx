@@ -364,7 +364,10 @@ export function BlueprintEditor({
     }
     return toState(initialDraft);
   }, [initialDraft]);
-  const initialSerializedDraft = useMemo(() => JSON.stringify(toPayload(initialState)), [initialState]);
+  const initialSerializedDraft = useMemo(
+    () => JSON.stringify(toPayload(initialState)),
+    [initialState],
+  );
   const storageKey = useMemo(() => {
     if (!blueprint) {
       return null;

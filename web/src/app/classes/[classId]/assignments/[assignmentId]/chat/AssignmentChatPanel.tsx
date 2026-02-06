@@ -2,10 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
-import {
-  sendAssignmentMessage,
-  submitChatAssignment,
-} from "@/app/classes/[classId]/chat/actions";
+import { sendAssignmentMessage, submitChatAssignment } from "@/app/classes/[classId]/chat/actions";
 import type { ChatTurn } from "@/lib/chat/types";
 import { MAX_CHAT_MESSAGE_CHARS, MAX_REFLECTION_CHARS } from "@/lib/chat/validation";
 
@@ -99,11 +96,9 @@ export default function AssignmentChatPanel({
         </div>
       ) : null}
 
-      <div className="max-h-[26rem] space-y-3 overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/60 p-4">
+      <div className="max-h-104 space-y-3 overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/60 p-4">
         {transcript.length === 0 ? (
-          <p className="text-sm text-slate-400">
-            Start by asking your first assignment question.
-          </p>
+          <p className="text-sm text-slate-400">Start by asking your first assignment question.</p>
         ) : (
           transcript.map((turn, index) => (
             <div
@@ -149,7 +144,9 @@ export default function AssignmentChatPanel({
           className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
         />
         <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-500">{message.length}/{MAX_CHAT_MESSAGE_CHARS}</p>
+          <p className="text-xs text-slate-500">
+            {message.length}/{MAX_CHAT_MESSAGE_CHARS}
+          </p>
           <button
             type="submit"
             disabled={isPending || isSubmitted || !message.trim()}

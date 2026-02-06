@@ -77,12 +77,8 @@ export default async function NewChatAssignmentPage({
         <header className="mb-8 space-y-2">
           <p className="text-sm font-medium text-slate-400">Teacher Studio</p>
           <h1 className="text-3xl font-semibold">Create Chat Assignment</h1>
-          <p className="text-sm text-slate-400">
-            Assigns to all enrolled students in this class.
-          </p>
-          <p className="text-xs text-slate-500">
-            Target students: {studentCount ?? 0}
-          </p>
+          <p className="text-sm text-slate-400">Assigns to all enrolled students in this class.</p>
+          <p className="text-xs text-slate-500">Target students: {studentCount ?? 0}</p>
         </header>
 
         {errorMessage ? (

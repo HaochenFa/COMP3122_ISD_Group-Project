@@ -79,7 +79,9 @@ export default async function QuizAssignmentPage({
     .maybeSingle();
 
   if (!recipient) {
-    redirect(`/classes/${classId}?error=${encodeURIComponent("You are not assigned to this quiz.")}`);
+    redirect(
+      `/classes/${classId}?error=${encodeURIComponent("You are not assigned to this quiz.")}`,
+    );
   }
 
   const { data: assignment } = await supabase
@@ -124,7 +126,7 @@ export default async function QuizAssignmentPage({
   const revealAnswers = attemptsUsed >= attemptLimit || dueLocked;
 
   const questions = revealAnswers
-    ? (
+    ? ((
         await supabase
           .from("quiz_questions")
           .select("id,question,choices,answer,explanation,order_index")
@@ -138,8 +140,8 @@ export default async function QuizAssignmentPage({
           : [],
         answer: row.answer ?? "",
         explanation: row.explanation ?? "",
-      })) ?? []
-    : (
+      })) ?? [])
+    : ((
         await supabase
           .from("quiz_questions")
           .select("id,question,choices,order_index")
@@ -151,9 +153,10 @@ export default async function QuizAssignmentPage({
         choices: Array.isArray(row.choices)
           ? row.choices.filter((choice): choice is string => typeof choice === "string")
           : [],
-      })) ?? [];
+      })) ?? []);
 
-  const latestSubmission = submissions && submissions.length > 0 ? submissions[submissions.length - 1] : null;
+  const latestSubmission =
+    submissions && submissions.length > 0 ? submissions[submissions.length - 1] : null;
   const latestAnswers = extractLatestAnswers(latestSubmission?.content);
   const bestScore =
     submissions && submissions.length > 0
@@ -186,7 +189,9 @@ export default async function QuizAssignmentPage({
           <p className="text-sm font-medium text-slate-400">Assignment Workspace</p>
           <h1 className="text-3xl font-semibold">{activity.title}</h1>
           <p className="text-sm text-slate-400">
-            {assignment.due_at ? `Due ${new Date(assignment.due_at).toLocaleString()}` : "No due date"}
+            {assignment.due_at
+              ? `Due ${new Date(assignment.due_at).toLocaleString()}`
+              : "No due date"}
           </p>
         </header>
 
