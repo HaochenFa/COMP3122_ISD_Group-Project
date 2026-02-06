@@ -393,8 +393,8 @@ function getCronSecretFromRequest(req: Request) {
   if (!authorization) {
     return null;
   }
-  const match = authorization.match(/^Bearer\s+(.+)$/i);
-  return match?.[1] ?? null;
+  const match = authorization.match(/^Bearer\s+(.+?)\s*$/i);
+  return match?.[1]?.trim() ?? null;
 }
 
 function isTerminalJobError(message: string) {

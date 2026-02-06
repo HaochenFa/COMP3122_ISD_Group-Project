@@ -215,6 +215,22 @@ describe("POST /api/materials/process", () => {
     expect(response.status).toBe(200);
   });
 
+  it("accepts bearer auth with extra authorization whitespace", async () => {
+    process.env.CRON_SECRET = "test-secret";
+    const { POST } = await import("@/app/api/materials/process/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/materials/process", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer   test-secret   ",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
   it("rejects unauthorized requests when cron secret is configured", async () => {
     process.env.CRON_SECRET = "test-secret";
     const { POST } = await import("@/app/api/materials/process/route");
