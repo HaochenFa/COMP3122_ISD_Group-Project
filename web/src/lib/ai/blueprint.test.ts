@@ -146,4 +146,12 @@ describe("parseBlueprintResponse", () => {
     const raw = JSON.stringify({ summary: "Ok", topics: [] });
     expect(() => parseBlueprintResponse(raw)).toThrow("Invalid blueprint JSON");
   });
+
+  it("throws when response contains multiple JSON objects", () => {
+    const first = JSON.stringify(validPayload);
+    const second = JSON.stringify({ ...validPayload, summary: "Alternate summary" });
+    expect(() => parseBlueprintResponse(`${first}\n${second}`)).toThrow(
+      "Multiple JSON objects found",
+    );
+  });
 });

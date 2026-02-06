@@ -254,7 +254,10 @@ async function loadStudentAssignmentContext(input: {
   };
 }
 
-export async function sendOpenPracticeMessage(classId: string, formData: FormData): Promise<ChatActionResult> {
+export async function sendOpenPracticeMessage(
+  classId: string,
+  formData: FormData,
+): Promise<ChatActionResult> {
   const { supabase, user } = await requireAuthenticatedUser();
 
   if (!user) {
@@ -349,10 +352,7 @@ export async function createChatAssignment(classId: string, formData: FormData) 
     .maybeSingle();
 
   if (publishedBlueprintError) {
-    redirectWithError(
-      `/classes/${classId}/activities/chat/new`,
-      publishedBlueprintError.message,
-    );
+    redirectWithError(`/classes/${classId}/activities/chat/new`, publishedBlueprintError.message);
     return;
   }
 
@@ -426,7 +426,9 @@ export async function createChatAssignment(classId: string, formData: FormData) 
       status: "assigned",
     }));
 
-    const { error: recipientsError } = await supabase.from("assignment_recipients").insert(recipients);
+    const { error: recipientsError } = await supabase
+      .from("assignment_recipients")
+      .insert(recipients);
 
     if (recipientsError) {
       redirectWithError(`/classes/${classId}/activities/chat/new`, recipientsError.message);
@@ -465,9 +467,7 @@ export async function sendAssignmentMessage(
     };
   }
 
-  let assignmentContext:
-    | Awaited<ReturnType<typeof loadStudentAssignmentContext>>
-    | null = null;
+  let assignmentContext: Awaited<ReturnType<typeof loadStudentAssignmentContext>> | null = null;
   try {
     assignmentContext = await loadStudentAssignmentContext({
       supabase,
@@ -505,7 +505,11 @@ export async function sendAssignmentMessage(
   }
 }
 
-export async function submitChatAssignment(classId: string, assignmentId: string, formData: FormData) {
+export async function submitChatAssignment(
+  classId: string,
+  assignmentId: string,
+  formData: FormData,
+) {
   const { supabase, user } = await requireAuthenticatedUser();
   if (!user) {
     redirect("/login");
@@ -581,7 +585,10 @@ export async function submitChatAssignment(classId: string, assignmentId: string
       .eq("id", existingSubmission.id);
 
     if (updateError) {
-      redirectWithError(`/classes/${classId}/assignments/${assignmentId}/chat`, updateError.message);
+      redirectWithError(
+        `/classes/${classId}/assignments/${assignmentId}/chat`,
+        updateError.message,
+      );
       return;
     }
   } else {
@@ -593,7 +600,10 @@ export async function submitChatAssignment(classId: string, assignmentId: string
     });
 
     if (insertError) {
-      redirectWithError(`/classes/${classId}/assignments/${assignmentId}/chat`, insertError.message);
+      redirectWithError(
+        `/classes/${classId}/assignments/${assignmentId}/chat`,
+        insertError.message,
+      );
       return;
     }
   }
@@ -601,7 +611,11 @@ export async function submitChatAssignment(classId: string, assignmentId: string
   redirect(`/classes/${classId}/assignments/${assignmentId}/chat?submitted=1`);
 }
 
-export async function reviewChatSubmission(classId: string, submissionId: string, formData: FormData) {
+export async function reviewChatSubmission(
+  classId: string,
+  submissionId: string,
+  formData: FormData,
+) {
   const { supabase, user } = await requireAuthenticatedUser();
   if (!user) {
     redirect("/login");
@@ -677,10 +691,7 @@ export async function reviewChatSubmission(classId: string, submissionId: string
     .eq("id", submission.id);
 
   if (scoreError) {
-    redirectWithError(
-      `/classes/${classId}/assignments/${assignmentId}/review`,
-      scoreError.message,
-    );
+    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/review`, scoreError.message);
     return;
   }
 
@@ -703,11 +714,19 @@ export async function reviewChatSubmission(classId: string, submissionId: string
     return;
   }
 
-  await supabase
+  const { error: statusError } = await supabase
     .from("assignment_recipients")
     .update({ status: "reviewed" })
     .eq("assignment_id", assignmentId)
     .eq("student_id", submission.student_id);
+
+  if (statusError) {
+    console.error("Failed to update assignment_recipients status to 'reviewed'", {
+      assignmentId,
+      studentId: submission.student_id,
+      error: statusError,
+    });
+  }
 
   redirect(`/classes/${classId}/assignments/${assignmentId}/review?saved=1`);
 }

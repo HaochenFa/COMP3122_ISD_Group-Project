@@ -1,4 +1,5 @@
 import type { ChatAssignmentSubmissionContent, ChatModelResponse, ChatRole, ChatTurn } from "@/lib/chat/types";
+import { extractSingleJsonObject } from "@/lib/json/extract-object";
 
 export const MAX_CHAT_MESSAGE_CHARS = 1200;
 export const MAX_CHAT_TURNS = 20;
@@ -124,12 +125,10 @@ export function parseReflection(raw: FormDataEntryValue | null) {
 }
 
 export function extractJsonObject(raw: string) {
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start < 0 || end < 0 || end <= start) {
-    throw new Error("No JSON object found in model response.");
-  }
-  return raw.slice(start, end + 1);
+  return extractSingleJsonObject(raw, {
+    notFoundMessage: "No JSON object found in model response.",
+    multipleMessage: "Multiple JSON objects found in model response.",
+  });
 }
 
 export function parseChatModelResponse(raw: string): ChatModelResponse {
