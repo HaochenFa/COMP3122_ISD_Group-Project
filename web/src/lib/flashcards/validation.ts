@@ -114,6 +114,9 @@ export function parseFlashcardsDraftPayload(raw: FormDataEntryValue | null) {
   if (!Array.isArray(cards) || cards.length < MIN_FLASHCARDS) {
     throw new Error("At least one flashcard is required.");
   }
+  if (cards.length > MAX_FLASHCARDS) {
+    throw new Error(`Flashcards cannot exceed ${MAX_FLASHCARDS} cards.`);
+  }
 
   const normalizedCards = cards.map((card, index) => {
     if (!card || typeof card !== "object") {

@@ -125,8 +125,14 @@ export default function FlashcardsDraftEditor({
 
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Front</label>
+                  <label
+                    className="text-xs uppercase tracking-[0.2em] text-slate-500"
+                    htmlFor={`flashcard-front-${cardIndex}`}
+                  >
+                    Front
+                  </label>
                   <textarea
+                    id={`flashcard-front-${cardIndex}`}
                     value={card.front}
                     onChange={(event) => updateCard(cardIndex, { front: event.target.value })}
                     rows={2}
@@ -136,8 +142,14 @@ export default function FlashcardsDraftEditor({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Back</label>
+                  <label
+                    className="text-xs uppercase tracking-[0.2em] text-slate-500"
+                    htmlFor={`flashcard-back-${cardIndex}`}
+                  >
+                    Back
+                  </label>
                   <textarea
+                    id={`flashcard-back-${cardIndex}`}
                     value={card.back}
                     onChange={(event) => updateCard(cardIndex, { back: event.target.value })}
                     rows={3}

@@ -336,7 +336,7 @@ export async function saveFlashcardsDraft(
 
   const { data: activity, error: activityError } = await supabase
     .from("activities")
-    .select("id,class_id,type,status,config")
+    .select("id,class_id,type,status,title,config")
     .eq("id", activityId)
     .eq("class_id", classId)
     .single();
@@ -500,7 +500,8 @@ export async function publishFlashcardsActivity(classId: string, activityId: str
   const { error: publishError } = await supabase
     .from("activities")
     .update({ status: "published" })
-    .eq("id", activityId);
+    .eq("id", activityId)
+    .eq("class_id", classId);
 
   if (publishError) {
     redirectWithError(
@@ -775,15 +776,34 @@ export async function reviewFlashcardsSubmission(
     return;
   }
 
-  const assignmentId = getFormString(formData, "assignment_id");
-  if (!assignmentId) {
-    redirectWithError(`/classes/${classId}`, "Assignment id is required.");
-    return;
-  }
-
   const role = await getClassAccess(supabase, classId, user.id);
   if (!role.found || !role.isTeacher) {
     redirectWithError(`/classes/${classId}`, "Teacher access required.");
+    return;
+  }
+
+  const { data: submission, error: submissionError } = await supabase
+    .from("submissions")
+    .select("id,assignment_id,student_id")
+    .eq("id", submissionId)
+    .single();
+
+  if (submissionError || !submission) {
+    redirectWithError(`/classes/${classId}`, "Submission not found.");
+    return;
+  }
+
+  const assignmentId = submission.assignment_id;
+
+  const { data: assignment, error: assignmentError } = await supabase
+    .from("assignments")
+    .select("id,class_id")
+    .eq("id", assignmentId)
+    .eq("class_id", classId)
+    .single();
+
+  if (assignmentError || !assignment) {
+    redirectWithError(`/classes/${classId}`, "Assignment not found.");
     return;
   }
 
@@ -806,36 +826,6 @@ export async function reviewFlashcardsSubmission(
     redirectWithError(
       `/classes/${classId}/assignments/${assignmentId}/review`,
       "Provide a score, comment, or at least one highlight.",
-    );
-    return;
-  }
-
-  const { data: submission, error: submissionError } = await supabase
-    .from("submissions")
-    .select("id,assignment_id,student_id")
-    .eq("id", submissionId)
-    .eq("assignment_id", assignmentId)
-    .single();
-
-  if (submissionError || !submission) {
-    redirectWithError(
-      `/classes/${classId}/assignments/${assignmentId}/review`,
-      "Submission not found.",
-    );
-    return;
-  }
-
-  const { data: assignment, error: assignmentError } = await supabase
-    .from("assignments")
-    .select("id,class_id")
-    .eq("id", assignmentId)
-    .eq("class_id", classId)
-    .single();
-
-  if (assignmentError || !assignment) {
-    redirectWithError(
-      `/classes/${classId}/assignments/${assignmentId}/review`,
-      "Assignment not found.",
     );
     return;
   }

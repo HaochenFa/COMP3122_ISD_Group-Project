@@ -429,6 +429,9 @@ export default async function AssignmentReviewPage({
             recipients!.map((recipient) => {
               const attempts = submissionByStudentId.get(recipient.student_id) ?? [];
               const latestSubmission = attempts.length > 0 ? attempts[attempts.length - 1] : null;
+              const parsedFlashcardsSubmission = latestSubmission
+                ? parseFlashcardsSubmissionContent(latestSubmission.content)
+                : null;
               const bestScore =
                 attempts.length > 0
                   ? Math.max(
@@ -702,34 +705,13 @@ export default async function AssignmentReviewPage({
                           Session Summary
                         </p>
                         <div className="mt-3 space-y-2 text-sm text-slate-200">
+                          <p>Session {parsedFlashcardsSubmission?.sessionNumber ?? 1}</p>
+                          <p>Cards reviewed: {parsedFlashcardsSubmission?.cardsReviewed ?? 0}</p>
                           <p>
-                            Session{" "}
-                            {
-                              parseFlashcardsSubmissionContent(latestSubmission.content)
-                                .sessionNumber
-                            }
+                            Known: {parsedFlashcardsSubmission?.knownCount ?? 0} · Needs review:{" "}
+                            {parsedFlashcardsSubmission?.reviewCount ?? 0}
                           </p>
-                          <p>
-                            Cards reviewed:{" "}
-                            {
-                              parseFlashcardsSubmissionContent(latestSubmission.content)
-                                .cardsReviewed
-                            }
-                          </p>
-                          <p>
-                            Known:{" "}
-                            {parseFlashcardsSubmissionContent(latestSubmission.content).knownCount}{" "}
-                            · Needs review:{" "}
-                            {parseFlashcardsSubmissionContent(latestSubmission.content).reviewCount}
-                          </p>
-                          <p>
-                            Score:{" "}
-                            {
-                              parseFlashcardsSubmissionContent(latestSubmission.content)
-                                .scorePercent
-                            }
-                            %
-                          </p>
+                          <p>Score: {parsedFlashcardsSubmission?.scorePercent ?? 0}%</p>
                         </div>
                       </div>
 
@@ -737,8 +719,6 @@ export default async function AssignmentReviewPage({
                         action={reviewFlashcardsSubmission.bind(null, classId, latestSubmission.id)}
                         className="space-y-4 rounded-2xl border border-white/10 bg-slate-950/50 p-4"
                       >
-                        <input type="hidden" name="assignment_id" value={assignmentId} />
-
                         <div className="space-y-2">
                           <label
                             className="text-sm text-slate-300"
