@@ -8,6 +8,8 @@ Build a production ready STEM learning platform where teachers transform class m
 - Teachers: create and curate course content, assign activities, review outcomes.
 - Students: learn through guided tools grounded in class materials.
 - Admin: optional. Can be merged into teacher for simplicity.
+- Identity model: each account has one immutable global account type (`teacher` or `student`).
+  Users who need both personas must use separate accounts.
 
 **Key Product Ideas**
 
@@ -59,6 +61,16 @@ Student Flow
 
 - Primary: join code. Students self enroll using a class code.
 - Optional later: admin enrollment if needed.
+
+**Auth And Identity Constraints**
+
+- Email/password is the only authentication method.
+- Email verification is required before protected routes and actions.
+- Phone auth is disabled and out of scope unless explicitly added later.
+- `profiles.account_type` is required and immutable.
+- Enrollment roles are constrained by account type:
+  - Teacher account: `teacher` or `ta`
+  - Student account: `student`
 
 **System Architecture**
 

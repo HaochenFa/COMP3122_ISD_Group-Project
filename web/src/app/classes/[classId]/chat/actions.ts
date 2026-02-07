@@ -150,10 +150,10 @@ export async function sendOpenPracticeMessage(
   classId: string,
   formData: FormData,
 ): Promise<ChatActionResult> {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser();
 
-  if (!user) {
-    return { ok: false, error: "Please sign in to use chat." };
+  if (authError || !user) {
+    return { ok: false, error: authError ?? "Please sign in to use chat." };
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -196,7 +196,11 @@ export async function sendOpenPracticeMessage(
 }
 
 export async function createChatAssignment(classId: string, formData: FormData) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
+  }
   if (!user) {
     redirect("/login");
   }
@@ -300,10 +304,10 @@ export async function sendAssignmentMessage(
   assignmentId: string,
   formData: FormData,
 ): Promise<ChatActionResult> {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "student" });
 
-  if (!user) {
-    return { ok: false, error: "Please sign in to continue." };
+  if (authError || !user) {
+    return { ok: false, error: authError ?? "Please sign in to continue." };
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -372,7 +376,11 @@ export async function submitChatAssignment(
   assignmentId: string,
   formData: FormData,
 ) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "student" });
+  if (authError) {
+    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/chat`, authError);
+    return;
+  }
   if (!user) {
     redirect("/login");
   }
@@ -494,7 +502,11 @@ export async function reviewChatSubmission(
   submissionId: string,
   formData: FormData,
 ) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
+  }
   if (!user) {
     redirect("/login");
   }

@@ -11,6 +11,10 @@ function getFormValue(formData: FormData, key: string) {
   return value.trim();
 }
 
+function parseAccountType(value: string): "teacher" | "student" | null {
+  return value === "teacher" || value === "student" ? value : null;
+}
+
 export async function signIn(formData: FormData) {
   const email = getFormValue(formData, "email");
   const password = getFormValue(formData, "password");
@@ -31,11 +35,21 @@ export async function signIn(formData: FormData) {
 export async function signUp(formData: FormData) {
   const email = getFormValue(formData, "email");
   const password = getFormValue(formData, "password");
+  const accountType = parseAccountType(getFormValue(formData, "account_type"));
+
+  if (!accountType) {
+    redirect("/register?error=Select%20an%20account%20type");
+  }
 
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      data: {
+        account_type: accountType,
+      },
+    },
   });
 
   if (error) {

@@ -26,7 +26,20 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+  const isAuthRoute = pathname === "/login" || pathname === "/register";
+  const isApiRoute = pathname.startsWith("/api/");
+
+  if (user && !user.email_confirmed_at && !isAuthRoute && !isApiRoute) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.searchParams.set("error", "Please verify your email before continuing.");
+    return NextResponse.redirect(loginUrl);
+  }
 
   return response;
 }

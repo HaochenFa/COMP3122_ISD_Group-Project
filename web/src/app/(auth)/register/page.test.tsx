@@ -7,6 +7,9 @@ describe("RegisterPage", () => {
     const html = renderToStaticMarkup(await RegisterPage({}));
 
     expect(html).toContain("Create an account");
+    expect(html).toContain("Account type");
+    expect(html).toContain("Teacher");
+    expect(html).toContain("Student");
     expect(html).toContain("Email");
     expect(html).toContain("Password");
     expect(html).toContain("Create account");

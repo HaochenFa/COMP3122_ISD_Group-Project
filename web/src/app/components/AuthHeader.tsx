@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/app/actions";
+import type { AccountType } from "@/lib/auth/session";
 
 type Breadcrumb = {
   label: string;
@@ -11,6 +12,7 @@ type NavKey = "dashboard" | "new-class" | "join-class";
 type AuthHeaderProps = {
   breadcrumbs?: Breadcrumb[];
   activeNav?: NavKey;
+  accountType?: AccountType;
   classContext?: {
     classId: string;
     isTeacher: boolean;
@@ -25,38 +27,61 @@ function getNavClass(isActive: boolean) {
   return `${base} border-white/10 text-slate-200 hover:border-white/30 hover:bg-white/5`;
 }
 
-export default function AuthHeader({ breadcrumbs, activeNav, classContext }: AuthHeaderProps) {
+export default function AuthHeader({
+  breadcrumbs,
+  activeNav,
+  accountType,
+  classContext,
+}: AuthHeaderProps) {
+  const resolvedAccountType =
+    accountType ??
+    (classContext
+      ? classContext.isTeacher
+        ? "teacher"
+        : "student"
+      : null);
+  const dashboardHref =
+    resolvedAccountType === "teacher"
+      ? "/teacher/dashboard"
+      : resolvedAccountType === "student"
+        ? "/student/dashboard"
+        : "/dashboard";
+  const showTeacherNav = resolvedAccountType === "teacher" || classContext?.isTeacher;
+
   return (
     <div className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/80 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-6">
         <Link
-          href="/dashboard"
+          href={dashboardHref}
           className="ui-motion-color text-sm font-medium tracking-wide text-slate-300 hover:text-slate-100"
         >
           STEM Learning Platform
         </Link>
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <Link
-            href="/dashboard"
+            href={dashboardHref}
             className={getNavClass(activeNav === "dashboard")}
             aria-current={activeNav === "dashboard" ? "page" : undefined}
           >
             Dashboard
           </Link>
-          <Link
-            href="/classes/new"
-            className={getNavClass(activeNav === "new-class")}
-            aria-current={activeNav === "new-class" ? "page" : undefined}
-          >
-            New Class
-          </Link>
-          <Link
-            href="/join"
-            className={getNavClass(activeNav === "join-class")}
-            aria-current={activeNav === "join-class" ? "page" : undefined}
-          >
-            Join Class
-          </Link>
+          {showTeacherNav ? (
+            <Link
+              href="/classes/new"
+              className={getNavClass(activeNav === "new-class")}
+              aria-current={activeNav === "new-class" ? "page" : undefined}
+            >
+              New Class
+            </Link>
+          ) : (
+            <Link
+              href="/join"
+              className={getNavClass(activeNav === "join-class")}
+              aria-current={activeNav === "join-class" ? "page" : undefined}
+            >
+              Join Class
+            </Link>
+          )}
           {classContext ? (
             <>
               <Link

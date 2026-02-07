@@ -1,23 +1,39 @@
 import Link from "next/link";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import AmbientBackground from "@/app/components/AmbientBackground";
+import { getAuthContext } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const isAuthed = Boolean(user);
-  const primaryHref = isAuthed ? "/classes/new" : "/register";
-  const primaryLabel = isAuthed ? "Create a class" : "Start a class";
-  const secondaryHref = isAuthed ? "/dashboard" : "/login";
+  const { user, profile, isEmailVerified } = await getAuthContext();
+  const accountType = profile?.account_type;
+  const isAuthed = Boolean(user && isEmailVerified && (accountType === "teacher" || accountType === "student"));
+  const dashboardHref =
+    accountType === "teacher"
+      ? "/teacher/dashboard"
+      : accountType === "student"
+        ? "/student/dashboard"
+        : "/dashboard";
+  const primaryHref = !isAuthed ? "/register" : accountType === "teacher" ? "/classes/new" : "/join";
+  const primaryLabel = !isAuthed
+    ? "Start a class"
+    : accountType === "teacher"
+      ? "Create a class"
+      : "Join a class";
+  const secondaryHref = isAuthed ? dashboardHref : "/login";
   const secondaryLabel = isAuthed ? "Go to dashboard" : "Sign in to dashboard";
-  const headerPrimaryHref = isAuthed ? "/dashboard" : "/login";
+  const headerPrimaryHref = isAuthed ? dashboardHref : "/login";
   const headerPrimaryLabel = isAuthed ? "Dashboard" : "Sign in";
-  const headerSecondaryHref = isAuthed ? "/classes/new" : "/register";
-  const headerSecondaryLabel = isAuthed ? "New class" : "Create account";
+  const headerSecondaryHref = !isAuthed
+    ? "/register"
+    : accountType === "teacher"
+      ? "/classes/new"
+      : "/join";
+  const headerSecondaryLabel = !isAuthed
+    ? "Create account"
+    : accountType === "teacher"
+      ? "New class"
+      : "Join class";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">

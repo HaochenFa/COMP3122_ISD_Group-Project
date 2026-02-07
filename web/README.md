@@ -34,6 +34,9 @@ pnpm dev
 
 - Database migrations live in `supabase/` at the repo root.
 - Run Supabase migrations before testing class creation.
+- New accounts must choose an immutable account type at signup (`teacher` or `student`).
+- Enable Supabase Auth email confirmation so users must verify email before protected access.
+- Disable Supabase phone auth provider (phone-based auth is intentionally out of scope).
 - Ensure the `materials` storage bucket exists for uploads.
 - Configure at least one AI provider with both a chat model and an embedding model.
 - Configure a vision model when processing images or low quality scans (OCR fallback).

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import AuthHeader from "@/app/components/AuthHeader";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import { createChatAssignment } from "@/app/classes/[classId]/chat/actions";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireVerifiedUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -19,14 +19,7 @@ export default async function NewChatAssignmentPage({
 }) {
   const { classId } = await params;
   const resolvedSearchParams = await searchParams;
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
 
   const { data: classRow } = await supabase
     .from("classes")
@@ -65,6 +58,7 @@ export default async function NewChatAssignmentPage({
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
         activeNav="dashboard"
+        accountType="teacher"
         classContext={{ classId: classRow.id, isTeacher }}
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },

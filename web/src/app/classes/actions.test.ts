@@ -7,6 +7,7 @@ import {
   extractTextFromBuffer,
   sanitizeFilename,
 } from "@/lib/materials/extract-text";
+import { requireVerifiedUser } from "@/lib/auth/session";
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
@@ -32,10 +33,6 @@ vi.mock("@/lib/materials/extract-text", async () => {
   };
 });
 
-const supabaseAuth = {
-  getUser: vi.fn(),
-};
-
 const supabaseFromMock = vi.fn();
 const supabaseRpcMock = vi.fn();
 const supabaseStorageMock = {
@@ -47,11 +44,14 @@ const supabaseStorageMock = {
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerSupabaseClient: () => ({
-    auth: supabaseAuth,
     from: supabaseFromMock,
     rpc: supabaseRpcMock,
     storage: supabaseStorageMock,
   }),
+}));
+
+vi.mock("@/lib/auth/session", () => ({
+  requireVerifiedUser: vi.fn(),
 }));
 
 function makeBuilder(result: unknown) {
@@ -105,6 +105,17 @@ async function expectRedirect(action: () => Promise<void> | void, path: string) 
 describe("class actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(requireVerifiedUser).mockResolvedValue({
+      supabase: {
+        from: supabaseFromMock,
+        rpc: supabaseRpcMock,
+        storage: supabaseStorageMock,
+      },
+      user: { id: "u1", email: "user@example.com" },
+      profile: { id: "u1", account_type: "teacher" },
+      accountType: "teacher",
+      isEmailVerified: true,
+    } as never);
   });
 
   it("redirects when class title is missing", async () => {
@@ -119,7 +130,10 @@ describe("class actions", () => {
   });
 
   it("redirects to login if user is not authenticated", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: null } });
+    vi.mocked(requireVerifiedUser).mockImplementationOnce(async () => {
+      redirect("/login");
+      throw new Error("unreachable");
+    });
 
     const formData = new FormData();
     formData.set("title", "Physics");
@@ -129,16 +143,10 @@ describe("class actions", () => {
   });
 
   it("creates a class and enrollment when valid", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     vi.mocked(generateJoinCode).mockReturnValue("JOIN01");
 
     supabaseRpcMock.mockResolvedValueOnce({ data: "class-1", error: null });
-    supabaseFromMock.mockImplementation((table: string) => {
-      if (table === "enrollments") {
-        return makeBuilder({ error: null });
-      }
-      return makeBuilder({ data: null, error: null });
-    });
+    supabaseFromMock.mockImplementation(() => makeBuilder({ data: null, error: null }));
 
     const formData = new FormData();
     formData.set("title", "Physics");
@@ -148,7 +156,6 @@ describe("class actions", () => {
   });
 
   it("retries after join code collision and succeeds", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     vi.mocked(generateJoinCode).mockReturnValueOnce("JOIN01").mockReturnValueOnce("JOIN02");
 
     supabaseRpcMock
@@ -158,12 +165,7 @@ describe("class actions", () => {
       })
       .mockResolvedValueOnce({ data: "class-1", error: null });
 
-    supabaseFromMock.mockImplementation((table: string) => {
-      if (table === "enrollments") {
-        return makeBuilder({ error: null });
-      }
-      return makeBuilder({ data: null, error: null });
-    });
+    supabaseFromMock.mockImplementation(() => makeBuilder({ data: null, error: null }));
 
     const formData = new FormData();
     formData.set("title", "Chemistry");
@@ -175,7 +177,6 @@ describe("class actions", () => {
   });
 
   it("exhausts join code attempts after collisions", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     vi.mocked(generateJoinCode).mockReturnValue("JOIN01");
 
     supabaseRpcMock.mockResolvedValue({
@@ -203,7 +204,6 @@ describe("class actions", () => {
   });
 
   it("rejects invalid join codes", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     supabaseRpcMock.mockResolvedValueOnce({
       data: null,
       error: { message: "not found" },
@@ -217,7 +217,6 @@ describe("class actions", () => {
   });
 
   it("joins a class and redirects on success", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     supabaseRpcMock.mockResolvedValueOnce({
       data: "class-2",
       error: null,
@@ -277,7 +276,6 @@ describe("class actions", () => {
     });
     vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
 
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({
@@ -302,5 +300,39 @@ describe("class actions", () => {
       "/classes/class-1?uploaded=processing",
     );
     expect(redirect).toHaveBeenCalled();
+  });
+
+  it("blocks class creation for student accounts", async () => {
+    vi.mocked(requireVerifiedUser).mockImplementationOnce(async () => {
+      redirect(
+        "/student/dashboard?error=This%20action%20requires%20a%20teacher%20account.",
+      );
+      throw new Error("unreachable");
+    });
+
+    const formData = new FormData();
+    formData.set("title", "Physics");
+
+    await expectRedirect(
+      () => createClass(formData),
+      "/student/dashboard?error=This%20action%20requires%20a%20teacher%20account.",
+    );
+  });
+
+  it("blocks class join for teacher accounts", async () => {
+    vi.mocked(requireVerifiedUser).mockImplementationOnce(async () => {
+      redirect(
+        "/teacher/dashboard?error=This%20action%20requires%20a%20student%20account.",
+      );
+      throw new Error("unreachable");
+    });
+
+    const formData = new FormData();
+    formData.set("join_code", "AB12CD");
+
+    await expectRedirect(
+      () => joinClass(formData),
+      "/teacher/dashboard?error=This%20action%20requires%20a%20student%20account.",
+    );
   });
 });

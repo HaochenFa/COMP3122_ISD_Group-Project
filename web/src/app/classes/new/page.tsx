@@ -1,6 +1,7 @@
 import { createClass } from "@/app/classes/actions";
 import AuthHeader from "@/app/components/AuthHeader";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
+import { requireVerifiedUser } from "@/lib/auth/session";
 
 type SearchParams = {
   error?: string;
@@ -11,6 +12,7 @@ export default async function NewClassPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
+  await requireVerifiedUser({ accountType: "teacher" });
   const resolvedSearchParams = await searchParams;
   const errorMessage =
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
@@ -19,6 +21,7 @@ export default async function NewClassPage({
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
         activeNav="new-class"
+        accountType="teacher"
         breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "New class" }]}
       />
       <div className="mx-auto w-full max-w-4xl px-6 py-16">

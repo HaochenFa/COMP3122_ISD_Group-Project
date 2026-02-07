@@ -77,7 +77,11 @@ async function logQuizAiRequest(input: {
 }
 
 export async function generateQuizDraft(classId: string, formData: FormData) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
+  }
   if (!user) {
     redirect("/login");
   }
@@ -239,7 +243,11 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
 }
 
 export async function saveQuizDraft(classId: string, activityId: string, formData: FormData) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
+  }
   if (!user) {
     redirect("/login");
   }
@@ -350,7 +358,11 @@ export async function saveQuizDraft(classId: string, activityId: string, formDat
 }
 
 export async function publishQuizActivity(classId: string, activityId: string) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
+  }
   if (!user) {
     redirect("/login");
   }
@@ -421,7 +433,11 @@ export async function createQuizAssignment(
   activityId: string,
   formData: FormData,
 ) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
+  }
   if (!user) {
     redirect("/login");
   }
@@ -482,7 +498,11 @@ export async function createQuizAssignment(
 }
 
 export async function submitQuizAttempt(classId: string, assignmentId: string, formData: FormData) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "student" });
+  if (authError) {
+    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/quiz`, authError);
+    return;
+  }
   if (!user) {
     redirect("/login");
   }
@@ -677,7 +697,11 @@ export async function reviewQuizSubmission(
   submissionId: string,
   formData: FormData,
 ) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
+  }
   if (!user) {
     redirect("/login");
   }
