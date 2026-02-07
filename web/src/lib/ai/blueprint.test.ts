@@ -74,6 +74,18 @@ describe("validateBlueprintPayload", () => {
   it("accepts a valid payload", () => {
     const result = validateBlueprintPayload(validPayload);
     expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.schemaVersion).toBe("v2");
+    }
+  });
+
+  it("rejects unsupported schemaVersion", () => {
+    const result = validateBlueprintPayload({
+      ...validPayload,
+      schemaVersion: "v3",
+    });
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((error) => error.includes("unsupported"))).toBe(true);
   });
 
   it("rejects non-integer sequence values", () => {
@@ -165,5 +177,11 @@ describe("parseBlueprintResponse", () => {
   it("throws when JSON does not match schema", () => {
     const raw = JSON.stringify({ summary: "Ok", topics: [] });
     expect(() => parseBlueprintResponse(raw)).toThrow("Invalid blueprint JSON");
+  });
+
+  it("preserves multiple-object errors", () => {
+    const first = JSON.stringify(validPayload);
+    const second = JSON.stringify({ ...validPayload, summary: "alternate" });
+    expect(() => parseBlueprintResponse(`${first}\n${second}`)).toThrow("Multiple JSON objects found");
   });
 });

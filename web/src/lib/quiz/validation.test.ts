@@ -35,6 +35,10 @@ describe("quiz validation", () => {
     });
 
     expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((error) => error.includes("choices must contain exactly 4 options"))).toBe(true);
+      expect(result.errors.some((error) => error.includes("answer must exactly match"))).toBe(false);
+    }
   });
 
   it("parses draft payload", () => {

@@ -14,6 +14,10 @@ const BLOOM_LEVELS = [
 ] as const;
 
 const COVERAGE_LEVELS = ["low", "medium", "high"] as const;
+const SUPPORTED_BLUEPRINT_SCHEMA_VERSIONS = new Set(["v2"]);
+const DEFAULT_FALLBACK_SCHEMA_VERSION = "v2";
+const NO_JSON_OBJECT_FOUND_MESSAGE = "No JSON object found in AI response.";
+const MULTIPLE_JSON_OBJECTS_FOUND_MESSAGE = "Multiple JSON objects found in AI response.";
 
 export type BloomLevel = (typeof BLOOM_LEVELS)[number];
 export type CoverageLevel = (typeof COVERAGE_LEVELS)[number];
@@ -154,6 +158,23 @@ export function validateBlueprintPayload(
   }
 
   const data = payload as BlueprintPayload;
+  let schemaVersion = resolveSchemaVersionDefault();
+  if (typeof data.schemaVersion !== "undefined") {
+    if (!isNonEmptyString(data.schemaVersion)) {
+      errors.push("schemaVersion must be a non-empty string when provided.");
+    } else {
+      const normalizedSchemaVersion = data.schemaVersion.trim().toLowerCase();
+      if (!SUPPORTED_BLUEPRINT_SCHEMA_VERSIONS.has(normalizedSchemaVersion)) {
+        errors.push(
+          `schemaVersion '${data.schemaVersion.trim()}' is unsupported. Supported values: ${[
+            ...SUPPORTED_BLUEPRINT_SCHEMA_VERSIONS,
+          ].join(", ")}.`,
+        );
+      } else {
+        schemaVersion = normalizedSchemaVersion;
+      }
+    }
+  }
   const sanitizedTopics: BlueprintTopic[] = [];
   const topicKeys = new Set<string>();
   const normalizedTopicTitles = new Set<string>();
@@ -277,7 +298,7 @@ export function validateBlueprintPayload(
     ok: true,
     errors,
     value: {
-      schemaVersion: DEFAULT_BLUEPRINT_SCHEMA_VERSION,
+      schemaVersion,
       summary: sanitizeString(data.summary),
       assumptions,
       uncertaintyNotes,
@@ -530,21 +551,31 @@ function wordCount(value: string) {
 
 function extractJson(raw: string) {
   return extractSingleJsonObject(raw, {
-    notFoundMessage: "No JSON object found in AI response.",
-    multipleMessage: "Multiple JSON objects found in AI response.",
+    notFoundMessage: NO_JSON_OBJECT_FOUND_MESSAGE,
+    multipleMessage: MULTIPLE_JSON_OBJECTS_FOUND_MESSAGE,
   });
 }
 
 function extractJsonWithFallback(raw: string) {
   try {
     return extractJson(raw);
-  } catch {
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== NO_JSON_OBJECT_FOUND_MESSAGE) {
+      throw error;
+    }
     const trimmed = raw.trim();
     if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
       return trimmed;
     }
-    throw new Error("No JSON object found in AI response.");
+    throw new Error(NO_JSON_OBJECT_FOUND_MESSAGE);
   }
+}
+
+function resolveSchemaVersionDefault() {
+  const normalized = DEFAULT_BLUEPRINT_SCHEMA_VERSION.trim().toLowerCase();
+  return SUPPORTED_BLUEPRINT_SCHEMA_VERSIONS.has(normalized)
+    ? normalized
+    : DEFAULT_FALLBACK_SCHEMA_VERSION;
 }
 
 function isNonEmptyString(value: unknown) {

@@ -101,7 +101,7 @@ export async function loadPublishedBlueprintContext(
     }) ?? [];
 
   const blueprintContext = [
-    `Source: ${BLUEPRINT_SOURCE_LABEL}`,
+    `${BLUEPRINT_SOURCE_LABEL} | Published blueprint context`,
     `Summary: ${blueprint.summary ?? "No summary provided."}`,
     ...topicLines,
   ]
@@ -213,7 +213,7 @@ function buildCanonicalBlueprintContext(payload: BlueprintPayload) {
       : null;
 
   return [
-    `Source: ${BLUEPRINT_SOURCE_LABEL}`,
+    `${BLUEPRINT_SOURCE_LABEL} | Published blueprint context`,
     `Summary: ${payload.summary}`,
     assumptions ? `Assumptions:\n${assumptions}` : null,
     uncertainty ? `Uncertainty notes:\n${uncertainty}` : null,

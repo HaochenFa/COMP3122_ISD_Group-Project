@@ -88,7 +88,7 @@ describe("loadPublishedBlueprintContext", () => {
 
     expect(context.blueprintId).toBe("bp-1");
     expect(context.topicCount).toBe(2);
-    expect(context.blueprintContext).toContain("Source: Blueprint Context");
+    expect(context.blueprintContext).toContain("Blueprint Context | Published blueprint context");
     expect(context.blueprintContext).toContain("Limits");
     expect(context.blueprintContext).toContain("epsilon-delta");
   });

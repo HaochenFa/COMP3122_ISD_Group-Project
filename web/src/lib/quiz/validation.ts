@@ -122,6 +122,7 @@ export function validateQuizGenerationPayload(
       stemSet.add(normalizedStem);
 
       let normalizedChoices: string[] = [];
+      let canValidateAnswerAgainstChoices = false;
       if (!Array.isArray(question.choices) || question.choices.length !== 4) {
         errors.push(`questions[${index}].choices must contain exactly 4 options.`);
       } else {
@@ -135,10 +136,11 @@ export function validateQuizGenerationPayload(
         if (normalizedChoices.some((choice) => isLowQualityDistractor(choice))) {
           errors.push(`questions[${index}].choices include low-quality distractors.`);
         }
+        canValidateAnswerAgainstChoices = normalizedChoices.length === 4;
       }
       if (!isNonEmptyString(question.answer)) {
         errors.push(`questions[${index}].answer is required.`);
-      } else {
+      } else if (canValidateAnswerAgainstChoices) {
         const answer = question.answer.trim();
         const matches = normalizedChoices.filter((choice) => choice === answer).length;
         if (matches !== 1) {

@@ -260,6 +260,60 @@ describe("chat actions", () => {
     expect(aiRequestBuilder.insert).toHaveBeenCalled();
   });
 
+  it("normalizes citation label variants without misattributing unknown labels", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "student-1" } } });
+    const aiRequestBuilder = makeBuilder({ error: null });
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "teacher-1", title: "Calculus" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: { role: "student" }, error: null });
+      }
+      if (table === "ai_requests") {
+        return aiRequestBuilder;
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    loadPublishedBlueprintContext.mockResolvedValueOnce({
+      blueprintId: "bp-1",
+      summary: "Summary",
+      topicCount: 3,
+      blueprintContext: "Blueprint Context | Published blueprint context\nSummary: Limits",
+    });
+    retrieveMaterialContext.mockResolvedValueOnce("Source 1 | Notes | page 1");
+    generateTextWithFallback.mockResolvedValueOnce({
+      provider: "openrouter",
+      model: "model-1",
+      content: JSON.stringify({
+        safety: "ok",
+        answer: "Start with the definition of a limit.",
+        citations: [
+          { sourceLabel: "Source: Blueprint Context", rationale: "From blueprint summary." },
+          { sourceLabel: "Unknown Label", rationale: "Unmatched external claim." },
+        ],
+      }),
+      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+      latencyMs: 12,
+    });
+
+    const formData = new FormData();
+    formData.set("message", "How should I begin proving this limit?");
+    formData.set("transcript", "[]");
+    const result = await sendOpenPracticeMessage("class-1", formData);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.response.citations[0]?.sourceLabel).toBe("Blueprint Context");
+      expect(result.response.citations[1]?.sourceLabel).toBe("Unknown Label");
+    }
+  });
+
   it("blocks assignment message when student is not recipient", async () => {
     vi.mocked(requireAuthenticatedUser).mockResolvedValueOnce({
       supabase: {

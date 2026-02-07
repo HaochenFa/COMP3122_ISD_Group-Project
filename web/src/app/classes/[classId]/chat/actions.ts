@@ -83,16 +83,30 @@ async function logChatAiRequest(input: {
 }
 
 function collectSourceLabels(blueprintContext: string, materialContext: string) {
-  const labels = new Set<string>();
-  labels.add("Blueprint Context");
+  const labels = new Map<string, string>();
+  labels.set(normalizeSourceLabelKey("Blueprint Context"), "Blueprint Context");
   const content = [blueprintContext, materialContext].join("\n");
-  const matches = content.matchAll(/(?:^|\n)(Source\s+\d+)\s*\|/gi);
+  const matches = content.matchAll(/(?:^|\n)([^|\n]+)\s*\|/g);
   for (const match of matches) {
     if (match[1]) {
-      labels.add(match[1].trim());
+      const label = match[1].trim();
+      labels.set(normalizeSourceLabelKey(label), label);
     }
   }
   return labels;
+}
+
+function normalizeSourceLabelKey(value: string) {
+  return value
+    .trim()
+    .replace(/^source:\s*/i, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function normalizeCitationSourceLabel(sourceLabel: string, knownLabels: Map<string, string>) {
+  const key = normalizeSourceLabelKey(sourceLabel);
+  return knownLabels.get(key) ?? sourceLabel.trim();
 }
 
 async function generateChatResponse(input: {
@@ -132,16 +146,10 @@ async function generateChatResponse(input: {
     const parsed = parseChatModelResponse(result.content);
     const sourceLabels = collectSourceLabels(blueprintContext.blueprintContext, materialContext);
     const normalizedCitations = parsed.citations
-      .map((citation) =>
-        sourceLabels.has(citation.sourceLabel)
-          ? citation
-          : {
-              ...citation,
-              sourceLabel: sourceLabels.has("Blueprint Context")
-                ? "Blueprint Context"
-                : [...sourceLabels][0] ?? "Blueprint Context",
-            },
-      )
+      .map((citation) => ({
+        ...citation,
+        sourceLabel: normalizeCitationSourceLabel(citation.sourceLabel, sourceLabels),
+      }))
       .filter(
         (citation, index, list) =>
           list.findIndex(
