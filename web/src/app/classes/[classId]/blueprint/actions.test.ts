@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { buildBlueprintPrompt, parseBlueprintResponse } from "@/lib/ai/blueprint";
 import { generateTextWithFallback } from "@/lib/ai/providers";
 import { retrieveMaterialContext } from "@/lib/materials/retrieval";
+import { requireVerifiedUser } from "@/lib/auth/session";
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
@@ -33,6 +34,10 @@ vi.mock("@/lib/ai/providers", () => ({
 
 vi.mock("@/lib/materials/retrieval", () => ({
   retrieveMaterialContext: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/session", () => ({
+  requireVerifiedUser: vi.fn(),
 }));
 
 const supabaseAuth = {
@@ -102,7 +107,16 @@ async function expectRedirect(action: () => Promise<void> | void, path: string) 
 }
 
 function mockTeacherAccess() {
-  supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+  vi.mocked(requireVerifiedUser).mockResolvedValueOnce({
+    supabase: {
+      from: supabaseFromMock,
+      rpc: supabaseRpcMock,
+    },
+    user: { id: "u1", email: "teacher@example.com" },
+    profile: { id: "u1", account_type: "teacher" },
+    accountType: "teacher",
+    isEmailVerified: true,
+  } as never);
   supabaseFromMock.mockImplementation((table: string) => {
     if (table === "classes") {
       return makeBuilder({
@@ -117,14 +131,31 @@ function mockTeacherAccess() {
   });
 }
 
+function mockRequireVerifiedUserSuccess() {
+  vi.mocked(requireVerifiedUser).mockResolvedValue({
+    supabase: {
+      from: supabaseFromMock,
+      rpc: supabaseRpcMock,
+    },
+    user: { id: "u1", email: "teacher@example.com" },
+    profile: { id: "u1", account_type: "teacher" },
+    accountType: "teacher",
+    isEmailVerified: true,
+  } as never);
+}
+
 describe("generateBlueprint", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequireVerifiedUserSuccess();
     supabaseRpcMock.mockResolvedValue({ data: null, error: null });
   });
 
   it("redirects to login when unauthenticated", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: null } });
+    vi.mocked(requireVerifiedUser).mockImplementationOnce(async () => {
+      redirect("/login");
+      throw new Error("unreachable");
+    });
     await expectRedirect(() => generateBlueprint("class-1"), "/login");
     expect(redirect).toHaveBeenCalled();
   });
@@ -239,6 +270,7 @@ describe("generateBlueprint", () => {
 describe("blueprint workflow actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequireVerifiedUserSuccess();
     supabaseRpcMock.mockResolvedValue({ data: null, error: null });
   });
 

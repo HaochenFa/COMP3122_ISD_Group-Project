@@ -72,6 +72,7 @@ describe("auth actions", () => {
     const formData = new FormData();
     formData.set("email", "test@example.com");
     formData.set("password", "goodpass");
+    formData.set("account_type", "teacher");
 
     await expectRedirect(() => signUp(formData), "/register?error=Email%20already%20used");
     expect(redirect).toHaveBeenCalled();
@@ -83,9 +84,27 @@ describe("auth actions", () => {
     const formData = new FormData();
     formData.set("email", "test@example.com");
     formData.set("password", "goodpass");
+    formData.set("account_type", "student");
 
     await expectRedirect(() => signUp(formData), "/login?verify=1");
     expect(redirect).toHaveBeenCalled();
+    expect(supabaseAuth.signUp).toHaveBeenCalledWith({
+      email: "test@example.com",
+      password: "goodpass",
+      options: { data: { account_type: "student" } },
+    });
+  });
+
+  it("redirects to register when account type is missing", async () => {
+    const formData = new FormData();
+    formData.set("email", "test@example.com");
+    formData.set("password", "goodpass");
+
+    await expectRedirect(
+      () => signUp(formData),
+      "/register?error=Select%20an%20account%20type",
+    );
+    expect(supabaseAuth.signUp).not.toHaveBeenCalled();
   });
 
   it("signs out and redirects to login", async () => {

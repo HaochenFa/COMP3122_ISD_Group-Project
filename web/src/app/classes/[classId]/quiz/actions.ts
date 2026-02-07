@@ -77,9 +77,13 @@ async function logQuizAiRequest(input: {
 }
 
 export async function generateQuizDraft(classId: string, formData: FormData) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
     redirect("/login");
+  }
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -239,9 +243,13 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
 }
 
 export async function saveQuizDraft(classId: string, activityId: string, formData: FormData) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
     redirect("/login");
+  }
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -350,9 +358,13 @@ export async function saveQuizDraft(classId: string, activityId: string, formDat
 }
 
 export async function publishQuizActivity(classId: string, activityId: string) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
     redirect("/login");
+  }
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -421,9 +433,13 @@ export async function createQuizAssignment(
   activityId: string,
   formData: FormData,
 ) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
     redirect("/login");
+  }
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -482,9 +498,13 @@ export async function createQuizAssignment(
 }
 
 export async function submitQuizAttempt(classId: string, assignmentId: string, formData: FormData) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "student" });
   if (!user) {
     redirect("/login");
+  }
+  if (authError) {
+    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/quiz`, authError);
+    return;
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -677,9 +697,13 @@ export async function reviewQuizSubmission(
   submissionId: string,
   formData: FormData,
 ) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
     redirect("/login");
+  }
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
   }
 
   const assignmentId = getFormString(formData, "assignment_id");

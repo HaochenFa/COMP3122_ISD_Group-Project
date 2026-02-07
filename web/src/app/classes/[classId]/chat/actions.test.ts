@@ -16,11 +16,15 @@ vi.mock("next/navigation", () => ({
 }));
 
 const {
+  requireAuthenticatedUser,
+  getClassAccess,
   generateTextWithFallback,
   retrieveMaterialContext,
   loadPublishedBlueprintContext,
   buildChatPrompt,
 } = vi.hoisted(() => ({
+  requireAuthenticatedUser: vi.fn(),
+  getClassAccess: vi.fn(),
   generateTextWithFallback: vi.fn(),
   retrieveMaterialContext: vi.fn(),
   loadPublishedBlueprintContext: vi.fn(),
@@ -32,6 +36,11 @@ const {
 
 vi.mock("@/lib/ai/providers", () => ({
   generateTextWithFallback,
+}));
+
+vi.mock("@/lib/activities/access", () => ({
+  requireAuthenticatedUser,
+  getClassAccess,
 }));
 
 vi.mock("@/lib/materials/retrieval", () => ({
@@ -106,6 +115,22 @@ async function expectRedirect(action: () => Promise<void> | void, path: string) 
 describe("chat actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(requireAuthenticatedUser).mockResolvedValue({
+      supabase: {
+        from: supabaseFromMock,
+      },
+      user: { id: "teacher-1" },
+      profile: { id: "teacher-1", account_type: "teacher" },
+      isEmailVerified: true,
+      authError: null,
+    } as never);
+    vi.mocked(getClassAccess).mockResolvedValue({
+      found: true,
+      isTeacher: true,
+      isMember: true,
+      classTitle: "Physics",
+      classOwnerId: "teacher-1",
+    });
   });
 
   it("creates a chat assignment and assigns all students", async () => {
@@ -164,23 +189,15 @@ describe("chat actions", () => {
   });
 
   it("blocks assignment creation when user is not a teacher", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "student-1" } } });
-
-    supabaseFromMock.mockImplementation((table: string) => {
-      if (table === "classes") {
-        return makeBuilder({
-          data: { id: "class-1", title: "Physics", owner_id: "teacher-1" },
-          error: null,
-        });
-      }
-      if (table === "enrollments") {
-        return makeBuilder({
-          data: { role: "student" },
-          error: null,
-        });
-      }
-      return makeBuilder({ data: null, error: null });
-    });
+    vi.mocked(requireAuthenticatedUser).mockResolvedValueOnce({
+      supabase: {
+        from: supabaseFromMock,
+      },
+      user: { id: "student-1" },
+      profile: { id: "student-1", account_type: "student" },
+      isEmailVerified: true,
+      authError: "This action requires a teacher account.",
+    } as never);
 
     const formData = new FormData();
     formData.set("title", "Chat Week 1");
@@ -188,7 +205,7 @@ describe("chat actions", () => {
 
     await expectRedirect(
       () => createChatAssignment("class-1", formData),
-      "/classes/class-1?error=Teacher%20access%20is%20required%20to%20create%20assignments.",
+      "/classes/class-1?error=This%20action%20requires%20a%20teacher%20account.",
     );
   });
 
@@ -244,17 +261,24 @@ describe("chat actions", () => {
   });
 
   it("blocks assignment message when student is not recipient", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "student-1" } } });
+    vi.mocked(requireAuthenticatedUser).mockResolvedValueOnce({
+      supabase: {
+        from: supabaseFromMock,
+      },
+      user: { id: "student-1" },
+      profile: { id: "student-1", account_type: "student" },
+      isEmailVerified: true,
+      authError: null,
+    } as never);
+    vi.mocked(getClassAccess).mockResolvedValueOnce({
+      found: true,
+      isTeacher: false,
+      isMember: true,
+      classTitle: "Calculus",
+      classOwnerId: "teacher-1",
+    });
+
     supabaseFromMock.mockImplementation((table: string) => {
-      if (table === "classes") {
-        return makeBuilder({
-          data: { id: "class-1", owner_id: "teacher-1", title: "Calculus" },
-          error: null,
-        });
-      }
-      if (table === "enrollments") {
-        return makeBuilder({ data: { role: "student" }, error: null });
-      }
       if (table === "assignment_recipients") {
         return makeBuilder({ data: null, error: null });
       }
@@ -273,7 +297,15 @@ describe("chat actions", () => {
   });
 
   it("submits a chat assignment transcript and reflection", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "student-1" } } });
+    vi.mocked(requireAuthenticatedUser).mockResolvedValueOnce({
+      supabase: {
+        from: supabaseFromMock,
+      },
+      user: { id: "student-1" },
+      profile: { id: "student-1", account_type: "student" },
+      isEmailVerified: true,
+      authError: null,
+    } as never);
 
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "assignment_recipients") {

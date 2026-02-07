@@ -1,6 +1,7 @@
 import { joinClass } from "@/app/classes/actions";
 import AuthHeader from "@/app/components/AuthHeader";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
+import { requireVerifiedUser } from "@/lib/auth/session";
 
 type SearchParams = {
   error?: string;
@@ -11,6 +12,7 @@ export default async function JoinClassPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
+  await requireVerifiedUser({ accountType: "student" });
   const resolvedSearchParams = await searchParams;
   const errorMessage =
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
@@ -19,6 +21,7 @@ export default async function JoinClassPage({
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
         activeNav="join-class"
+        accountType="student"
         breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Join class" }]}
       />
       <div className="mx-auto w-full max-w-lg px-6 py-16">

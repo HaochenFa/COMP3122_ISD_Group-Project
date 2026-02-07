@@ -1,17 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import NewChatAssignmentPage from "@/app/classes/[classId]/activities/chat/new/page";
+import { requireVerifiedUser } from "@/lib/auth/session";
 
-const supabaseAuth = {
-  getUser: vi.fn(),
-};
 const supabaseFromMock = vi.fn();
 
-vi.mock("@/lib/supabase/server", () => ({
-  createServerSupabaseClient: () => ({
-    auth: supabaseAuth,
-    from: supabaseFromMock,
-  }),
+vi.mock("@/lib/auth/session", () => ({
+  requireVerifiedUser: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -47,7 +42,13 @@ function makeBuilder(result: unknown) {
 
 describe("NewChatAssignmentPage", () => {
   it("renders assignment creation fields", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "teacher-1" } } });
+    vi.mocked(requireVerifiedUser).mockResolvedValueOnce({
+      supabase: { from: supabaseFromMock },
+      user: { id: "teacher-1", email: "teacher@example.com" },
+      profile: { id: "teacher-1", account_type: "teacher" },
+      accountType: "teacher",
+      isEmailVerified: true,
+    } as never);
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({

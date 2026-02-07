@@ -57,6 +57,30 @@ export default async function RegisterPage({
 
             <form className="space-y-4" action={signUp}>
               <div className="space-y-2">
+                <span className="text-sm text-slate-300">Account type</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:border-cyan-400/40">
+                    <input
+                      type="radio"
+                      name="account_type"
+                      value="teacher"
+                      className="h-4 w-4 accent-cyan-400"
+                    />
+                    Teacher
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:border-cyan-400/40">
+                    <input
+                      type="radio"
+                      name="account_type"
+                      value="student"
+                      defaultChecked
+                      className="h-4 w-4 accent-cyan-400"
+                    />
+                    Student
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-2">
                 <label className="text-sm text-slate-300" htmlFor="email">
                   Email
                 </label>

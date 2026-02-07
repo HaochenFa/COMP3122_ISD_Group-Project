@@ -150,10 +150,13 @@ export async function sendOpenPracticeMessage(
   classId: string,
   formData: FormData,
 ): Promise<ChatActionResult> {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser();
 
   if (!user) {
     return { ok: false, error: "Please sign in to use chat." };
+  }
+  if (authError) {
+    return { ok: false, error: authError };
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -196,9 +199,13 @@ export async function sendOpenPracticeMessage(
 }
 
 export async function createChatAssignment(classId: string, formData: FormData) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
     redirect("/login");
+  }
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -300,10 +307,13 @@ export async function sendAssignmentMessage(
   assignmentId: string,
   formData: FormData,
 ): Promise<ChatActionResult> {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "student" });
 
   if (!user) {
     return { ok: false, error: "Please sign in to continue." };
+  }
+  if (authError) {
+    return { ok: false, error: authError };
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -372,9 +382,13 @@ export async function submitChatAssignment(
   assignmentId: string,
   formData: FormData,
 ) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "student" });
   if (!user) {
     redirect("/login");
+  }
+  if (authError) {
+    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/chat`, authError);
+    return;
   }
 
   let transcript: ChatTurn[];
@@ -494,9 +508,13 @@ export async function reviewChatSubmission(
   submissionId: string,
   formData: FormData,
 ) {
-  const { supabase, user } = await requireAuthenticatedUser();
+  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
     redirect("/login");
+  }
+  if (authError) {
+    redirectWithError(`/classes/${classId}`, authError);
+    return;
   }
 
   const assignmentId = getFormString(formData, "assignment_id");

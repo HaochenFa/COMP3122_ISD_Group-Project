@@ -1,13 +1,31 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { ClassAccess } from "@/lib/activities/types";
+import { getAuthContext, type AccountType } from "@/lib/auth/session";
 
-export async function requireAuthenticatedUser() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export async function requireAuthenticatedUser(options?: {
+  accountType?: AccountType;
+  requireVerifiedEmail?: boolean;
+}) {
+  const { supabase, user, profile, isEmailVerified } = await getAuthContext();
+  const requiredRole = options?.accountType;
+  const profileAccountType = profile?.account_type;
+  const authError = !user
+    ? "Please sign in."
+    : options?.requireVerifiedEmail !== false && !isEmailVerified
+      ? "Please verify your email before continuing."
+      : !profileAccountType
+        ? "Account setup is incomplete. Please sign in again."
+        : requiredRole && profileAccountType !== requiredRole
+        ? `This action requires a ${requiredRole} account.`
+        : null;
 
-  return { supabase, user };
+  return {
+    supabase,
+    user,
+    profile,
+    isEmailVerified,
+    authError,
+  };
 }
 
 export async function getClassAccess(

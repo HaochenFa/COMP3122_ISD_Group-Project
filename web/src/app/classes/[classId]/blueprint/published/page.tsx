@@ -22,7 +22,7 @@ export default async function BlueprintPublishedPage({
 
   const { data: classRow } = await supabase
     .from("classes")
-    .select("id,title,subject,level")
+    .select("id,title,subject,level,owner_id")
     .eq("id", classId)
     .single();
 
@@ -44,6 +44,16 @@ export default async function BlueprintPublishedPage({
       `/classes/${classId}?error=${encodeURIComponent("No published blueprint available.")}`,
     );
   }
+
+  const { data: enrollment } = await supabase
+    .from("enrollments")
+    .select("role")
+    .eq("class_id", classId)
+    .eq("user_id", user.id)
+    .single();
+
+  const isTeacher =
+    classRow.owner_id === user.id || enrollment?.role === "teacher" || enrollment?.role === "ta";
 
   const { data: topics } = await supabase
     .from("topics")
@@ -78,6 +88,7 @@ export default async function BlueprintPublishedPage({
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
         activeNav="dashboard"
+        classContext={{ classId: classRow.id, isTeacher }}
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: classRow.title, href: `/classes/${classRow.id}` },

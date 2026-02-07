@@ -12,6 +12,7 @@ import {
   sanitizeFilename,
 } from "@/lib/materials/extract-text";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireVerifiedUser } from "@/lib/auth/session";
 
 function getFormValue(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -76,14 +77,7 @@ export async function createClass(formData: FormData) {
     redirectWithError("/classes/new", "Class title is required");
   }
 
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase } = await requireVerifiedUser({ accountType: "teacher" });
 
   let newClassId: string | null = null;
 
@@ -116,16 +110,6 @@ export async function createClass(formData: FormData) {
     redirectWithError("/classes/new", "Unable to generate a join code");
   }
 
-  const { error: enrollmentError } = await supabase.from("enrollments").insert({
-    class_id: newClassId,
-    user_id: user.id,
-    role: "teacher",
-  });
-
-  if (enrollmentError) {
-    redirectWithError("/classes/new", enrollmentError.message);
-  }
-
   redirect(`/classes/${newClassId}`);
 }
 
@@ -136,14 +120,7 @@ export async function joinClass(formData: FormData) {
     redirectWithError("/join", "Join code is required");
   }
 
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase } = await requireVerifiedUser({ accountType: "student" });
 
   const { data: classId, error } = await supabase.rpc("join_class_by_code", {
     code: joinCode,
@@ -194,14 +171,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
     redirectWithError(`/classes/${classId}`, "Unsupported MIME type");
   }
 
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {

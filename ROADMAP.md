@@ -16,6 +16,9 @@ This roadmap focuses on production ready delivery with subject agnostic function
 - Material upload, parsing, and storage.
 - Course Blueprint generation and versioning.
 - Blueprint editor with draft -> overview (approved) -> published workflow.
+- Status update: Auth hardening complete with verified-email gates, immutable global account
+  types (`teacher`/`student`), split teacher/student dashboards, and enrollment escalation
+  protections at the database layer.
 
 **Phase 2 - Activity Engine**
 

@@ -6,6 +6,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { buildBlueprintPrompt, parseBlueprintResponse } from "@/lib/ai/blueprint";
 import { generateTextWithFallback } from "@/lib/ai/providers";
 import { retrieveMaterialContext } from "@/lib/materials/retrieval";
+import { requireVerifiedUser } from "@/lib/auth/session";
 
 const DRAFT_ALREADY_EXISTS_MESSAGE = "A draft version already exists. Open it to continue editing.";
 
@@ -387,14 +388,7 @@ async function rollbackDraftCreation(
 }
 
 export async function generateBlueprint(classId: string) {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
@@ -581,14 +575,7 @@ export async function generateBlueprint(classId: string) {
 }
 
 export async function saveDraft(classId: string, blueprintId: string, formData: FormData) {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
@@ -890,14 +877,7 @@ export async function saveDraft(classId: string, blueprintId: string, formData: 
 }
 
 export async function approveBlueprint(classId: string, blueprintId: string) {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed || !access.isOwner) {
@@ -947,14 +927,7 @@ export async function approveBlueprint(classId: string, blueprintId: string) {
 // Creates a new draft based on the latest published blueprint and archives the
 // published version. Use publishBlueprint to promote an approved draft.
 export async function createDraftFromPublished(classId: string) {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed || !access.isOwner) {
@@ -1091,14 +1064,7 @@ export async function createDraftFromPublished(classId: string) {
 
 // Publishes an approved draft and archives any older approved/published versions.
 export async function publishBlueprint(classId: string, blueprintId: string) {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed || !access.isOwner) {

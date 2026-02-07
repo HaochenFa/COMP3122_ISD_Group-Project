@@ -160,6 +160,7 @@ export default async function BlueprintPage({
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
         activeNav="dashboard"
+        classContext={{ classId: classRow.id, isTeacher }}
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: classRow.title, href: `/classes/${classRow.id}` },
