@@ -8,11 +8,14 @@ export async function requireAuthenticatedUser(options?: {
 }) {
   const { supabase, user, profile, isEmailVerified } = await getAuthContext();
   const requiredRole = options?.accountType;
+  const profileAccountType = profile?.account_type;
   const authError = !user
     ? "Please sign in."
     : options?.requireVerifiedEmail !== false && !isEmailVerified
       ? "Please verify your email before continuing."
-      : requiredRole && profile?.account_type !== requiredRole
+      : !profileAccountType
+        ? "Account setup is incomplete. Please sign in again."
+        : requiredRole && profileAccountType !== requiredRole
         ? `This action requires a ${requiredRole} account.`
         : null;
 

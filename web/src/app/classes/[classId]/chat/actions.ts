@@ -152,8 +152,11 @@ export async function sendOpenPracticeMessage(
 ): Promise<ChatActionResult> {
   const { supabase, user, authError } = await requireAuthenticatedUser();
 
-  if (authError || !user) {
-    return { ok: false, error: authError ?? "Please sign in to use chat." };
+  if (!user) {
+    return { ok: false, error: "Please sign in to use chat." };
+  }
+  if (authError) {
+    return { ok: false, error: authError };
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -197,12 +200,12 @@ export async function sendOpenPracticeMessage(
 
 export async function createChatAssignment(classId: string, formData: FormData) {
   const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
+  if (!user) {
+    redirect("/login");
+  }
   if (authError) {
     redirectWithError(`/classes/${classId}`, authError);
     return;
-  }
-  if (!user) {
-    redirect("/login");
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -306,8 +309,11 @@ export async function sendAssignmentMessage(
 ): Promise<ChatActionResult> {
   const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "student" });
 
-  if (authError || !user) {
-    return { ok: false, error: authError ?? "Please sign in to continue." };
+  if (!user) {
+    return { ok: false, error: "Please sign in to continue." };
+  }
+  if (authError) {
+    return { ok: false, error: authError };
   }
 
   const role = await getClassAccess(supabase, classId, user.id);
@@ -377,12 +383,12 @@ export async function submitChatAssignment(
   formData: FormData,
 ) {
   const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "student" });
+  if (!user) {
+    redirect("/login");
+  }
   if (authError) {
     redirectWithError(`/classes/${classId}/assignments/${assignmentId}/chat`, authError);
     return;
-  }
-  if (!user) {
-    redirect("/login");
   }
 
   let transcript: ChatTurn[];
@@ -503,12 +509,12 @@ export async function reviewChatSubmission(
   formData: FormData,
 ) {
   const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
+  if (!user) {
+    redirect("/login");
+  }
   if (authError) {
     redirectWithError(`/classes/${classId}`, authError);
     return;
-  }
-  if (!user) {
-    redirect("/login");
   }
 
   const assignmentId = getFormString(formData, "assignment_id");

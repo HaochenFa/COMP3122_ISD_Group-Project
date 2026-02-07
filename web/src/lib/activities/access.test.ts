@@ -46,4 +46,16 @@ describe("requireAuthenticatedUser", () => {
     const result = await requireAuthenticatedUser({ accountType: "teacher" });
     expect(result.authError).toBe("This action requires a teacher account.");
   });
+
+  it("returns setup error when profile is missing account type", async () => {
+    vi.mocked(getAuthContext).mockResolvedValue({
+      supabase: {},
+      user: { id: "u1", email: "x@example.com" },
+      profile: null,
+      isEmailVerified: true,
+    } as never);
+
+    const result = await requireAuthenticatedUser({ accountType: "teacher" });
+    expect(result.authError).toBe("Account setup is incomplete. Please sign in again.");
+  });
 });

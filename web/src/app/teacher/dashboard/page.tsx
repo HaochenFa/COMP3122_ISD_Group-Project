@@ -46,9 +46,16 @@ export default async function TeacherDashboardPage() {
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {classes && classes.length > 0 ? (
               classes.map((classItem) => {
-                const role = classItem.owner_id === user.id ? "Teacher" : "TA";
                 const enrollmentRole = enrollmentMap.get(classItem.id);
-                if (role === "TA" && enrollmentRole !== "teacher" && enrollmentRole !== "ta") {
+                const role =
+                  classItem.owner_id === user.id
+                    ? "Teacher"
+                    : enrollmentRole === "teacher"
+                      ? "Teacher"
+                      : enrollmentRole === "ta"
+                        ? "TA"
+                        : null;
+                if (!role) {
                   return null;
                 }
 

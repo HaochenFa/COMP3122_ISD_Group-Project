@@ -33,8 +33,14 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAuthRoute = pathname === "/login" || pathname === "/register";
   const isApiRoute = pathname.startsWith("/api/");
+  const isProtectedRoute =
+    pathname === "/dashboard" ||
+    pathname === "/join" ||
+    pathname.startsWith("/classes") ||
+    pathname.startsWith("/teacher") ||
+    pathname.startsWith("/student");
 
-  if (user && !user.email_confirmed_at && !isAuthRoute && !isApiRoute) {
+  if (user && !user.email_confirmed_at && isProtectedRoute && !isAuthRoute && !isApiRoute) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("error", "Please verify your email before continuing.");

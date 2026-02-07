@@ -64,7 +64,6 @@ export default async function RegisterPage({
                       type="radio"
                       name="account_type"
                       value="teacher"
-                      defaultChecked
                       className="h-4 w-4 accent-cyan-400"
                     />
                     Teacher
@@ -74,6 +73,7 @@ export default async function RegisterPage({
                       type="radio"
                       name="account_type"
                       value="student"
+                      defaultChecked
                       className="h-4 w-4 accent-cyan-400"
                     />
                     Student
