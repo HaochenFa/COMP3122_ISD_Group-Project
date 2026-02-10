@@ -73,10 +73,10 @@ export default async function StudentDashboardPage() {
                         Open class
                       </Link>
                       <Link
-                        href={`/classes/${classItem.id}/chat`}
+                        href={`/classes/${classItem.id}?view=chat`}
                         className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 hover:border-white/30 hover:bg-white/5"
                       >
-                        Open chat
+                        Open AI chat workspace
                       </Link>
                     </div>
                   </div>

@@ -81,6 +81,12 @@ export default async function TeacherDashboardPage() {
                         Open class
                       </Link>
                       <Link
+                        href={`/classes/${classItem.id}#teacher-chat-monitor`}
+                        className="rounded-full border border-cyan-400/40 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-400/10"
+                      >
+                        Chat monitor
+                      </Link>
+                      <Link
                         href={`/classes/${classItem.id}/activities/chat/new`}
                         className="rounded-full border border-cyan-400/40 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-400/10"
                       >

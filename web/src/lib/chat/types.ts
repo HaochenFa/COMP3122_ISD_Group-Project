@@ -21,3 +21,40 @@ export type ChatAssignmentSubmissionContent = {
   reflection: string;
   completedAt: string;
 };
+
+export type ClassChatAuthorKind = "student" | "teacher" | "assistant";
+
+export type ClassChatSession = {
+  id: string;
+  classId: string;
+  ownerUserId: string;
+  title: string;
+  isPinned: boolean;
+  archivedAt: string | null;
+  lastMessageAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ClassChatMessage = {
+  id: string;
+  sessionId: string;
+  classId: string;
+  authorUserId: string | null;
+  authorKind: ClassChatAuthorKind;
+  content: string;
+  citations: { sourceLabel: string; snippet?: string }[];
+  safety: "ok" | "refusal" | null;
+  provider: string | null;
+  model: string | null;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+  latencyMs: number | null;
+  createdAt: string;
+};
+
+export type ClassChatParticipant = {
+  userId: string;
+  displayName: string;
+};

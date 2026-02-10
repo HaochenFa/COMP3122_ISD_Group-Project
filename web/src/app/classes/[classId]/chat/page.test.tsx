@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
-import OpenPracticeChatPage from "@/app/classes/[classId]/chat/page";
+import ClassChatCompatibilityPage from "@/app/classes/[classId]/chat/page";
 
 const supabaseAuth = {
   getUser: vi.fn(),
@@ -27,10 +26,7 @@ function makeBuilder(result: unknown) {
   const resolveResult = () => result;
   builder.select = vi.fn(() => builder);
   builder.eq = vi.fn(() => builder);
-  builder.order = vi.fn(() => builder);
-  builder.limit = vi.fn(() => builder);
   builder.single = vi.fn(async () => resolveResult());
-  builder.maybeSingle = vi.fn(async () => resolveResult());
   builder.then = (
     onFulfilled: (value: unknown) => unknown,
     onRejected: (reason: unknown) => unknown,
@@ -38,10 +34,7 @@ function makeBuilder(result: unknown) {
   return builder as unknown as {
     select: () => typeof builder;
     eq: () => typeof builder;
-    order: () => typeof builder;
-    limit: () => typeof builder;
     single: () => Promise<unknown>;
-    maybeSingle: () => Promise<unknown>;
     then: (
       onFulfilled: (value: unknown) => unknown,
       onRejected: (reason: unknown) => unknown,
@@ -49,71 +42,71 @@ function makeBuilder(result: unknown) {
   };
 }
 
-describe("OpenPracticeChatPage", () => {
-  it("renders chat workspace when published blueprint exists", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+async function expectRedirect(action: () => Promise<void> | void, path: string) {
+  try {
+    await Promise.resolve().then(action);
+    throw new Error("Expected redirect");
+  } catch (error) {
+    if (error && typeof error === "object" && "digest" in error) {
+      expect(String((error as { digest?: string }).digest)).toContain(`;${path};`);
+      return;
+    }
+    throw error;
+  }
+}
+
+describe("ClassChatCompatibilityPage", () => {
+  it("redirects student members to class chat-focused view", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "student-1" } } });
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({
           data: {
             id: "class-1",
-            title: "Calculus",
-            subject: "Math",
-            level: "College",
-            owner_id: "t1",
+            owner_id: "teacher-1",
           },
           error: null,
         });
       }
       if (table === "enrollments") {
         return makeBuilder({ data: { role: "student" }, error: null });
-      }
-      if (table === "blueprints") {
-        return makeBuilder({ data: { id: "bp-1", version: 1 }, error: null });
       }
       return makeBuilder({ data: null, error: null });
     });
 
-    const html = renderToStaticMarkup(
-      await OpenPracticeChatPage({
-        params: Promise.resolve({ classId: "class-1" }),
-      }),
+    await expectRedirect(
+      () =>
+        ClassChatCompatibilityPage({
+          params: Promise.resolve({ classId: "class-1" }),
+        }),
+      "/classes/class-1?view=chat",
     );
-
-    expect(html).toContain("Open Practice Chat");
-    expect(html).toContain("not saved");
   });
 
-  it("renders blueprint required state when no published blueprint", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+  it("redirects teachers to class monitor anchor", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "teacher-1" } } });
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({
           data: {
             id: "class-1",
-            title: "Calculus",
-            subject: "Math",
-            level: "College",
-            owner_id: "t1",
+            owner_id: "teacher-1",
           },
           error: null,
         });
       }
       if (table === "enrollments") {
-        return makeBuilder({ data: { role: "student" }, error: null });
-      }
-      if (table === "blueprints") {
         return makeBuilder({ data: null, error: null });
       }
       return makeBuilder({ data: null, error: null });
     });
 
-    const html = renderToStaticMarkup(
-      await OpenPracticeChatPage({
-        params: Promise.resolve({ classId: "class-1" }),
-      }),
+    await expectRedirect(
+      () =>
+        ClassChatCompatibilityPage({
+          params: Promise.resolve({ classId: "class-1" }),
+        }),
+      "/classes/class-1#teacher-chat-monitor",
     );
-
-    expect(html).toContain("Published blueprint required");
   });
 });

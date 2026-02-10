@@ -85,10 +85,14 @@ export default function AuthHeader({
           {classContext ? (
             <>
               <Link
-                href={`/classes/${classContext.classId}/chat`}
+                href={
+                  classContext.isTeacher
+                    ? `/classes/${classContext.classId}#teacher-chat-monitor`
+                    : `/classes/${classContext.classId}?view=chat`
+                }
                 className="ui-motion-color rounded-full border border-white/10 px-4 py-2 text-xs font-medium text-slate-200 hover:border-white/30 hover:bg-white/5"
               >
-                Open Chat
+                {classContext.isTeacher ? "Chat Monitor" : "Open AI Chat"}
               </Link>
               {classContext.isTeacher ? (
                 <Link

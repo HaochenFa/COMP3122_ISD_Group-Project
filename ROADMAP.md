@@ -26,8 +26,8 @@ This roadmap focuses on production ready delivery with subject agnostic function
 - Unified schema for activities and assignments.
 - Student submission storage and retrieval.
 - Teacher review and feedback workflow.
-- Status update: AI Chat vertical slice implemented with whole-class assignment targeting,
-  assignment transcript + reflection submissions, and teacher manual review/score flow.
+- Status update: AI Chat assignment workflow implemented with whole-class targeting,
+  transcript + reflection submissions, and teacher manual review/score flow.
 
 **Phase 3 - Feature Modules**
 
@@ -36,7 +36,8 @@ This roadmap focuses on production ready delivery with subject agnostic function
 - Flashcards generated from key concepts and formulas.
 - Homework assistance with scaffolded hints.
 - Exam review plan based on topic mastery.
-- Status update: Open practice AI Chat and assignment-scoped AI Chat are implemented.
+- Status update: Always-on AI Chat is implemented with persistent sessions,
+  student chat-focused workspace transformation, and teacher chat monitoring.
 - Status update: Quiz vertical slice is implemented with draft generation, teacher curation + publish,
   whole-class assignment, 2-attempt best-score policy, auto-grading, and teacher override review.
 - Flashcards, homework assistance, and exam review remain next.

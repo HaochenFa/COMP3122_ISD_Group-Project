@@ -34,10 +34,14 @@ Student Flow
 - Request scaffolded homework help.
 - View exam review plan and submit reflections.
 
-**AI Chat Vertical Slice (Implemented)**
+**AI Chat (Always-On + Assignments)**
 
-- Open Practice Chat: available to class members when a published blueprint exists. Conversations are session-only and not persisted.
-- Chat Assignment Flow:
+- Always-On Class Chat:
+  - Available to class members when a published blueprint exists.
+  - Persistent multi-session chat history per user/class.
+  - Student class experience is chat-first when activated (large conversation pane + sidebar tools).
+  - Teachers retain class-overview-first UX with a read-only student chat monitor panel.
+- Chat Assignment Flow (still supported for grading):
   - Teacher creates a chat activity + assignment (whole class targeting).
   - Student completes assignment chat and submits transcript + reflection.
   - Teacher reviews submission, records manual score, and adds feedback highlights/comments.
