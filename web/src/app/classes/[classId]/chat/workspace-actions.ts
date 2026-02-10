@@ -10,6 +10,7 @@ import type {
   ClassChatSession,
 } from "@/lib/chat/types";
 import { MAX_CHAT_TURNS, parseChatMessage } from "@/lib/chat/validation";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 type ActionResult<T> =
   | {
@@ -574,14 +575,28 @@ export async function sendClassChatMessage(
 
   const transcript = messagesToTranscript((contextRows ?? []).map((row) => normalizeMessage(row as MessageRow)));
 
-  const response = await generateGroundedChatResponse({
-    classId,
-    classTitle: access.role.classTitle,
-    userId: access.user.id,
-    userMessage: message,
-    transcript,
-    purpose: access.role.isTeacher ? "teacher_chat_always_on_v1" : "student_chat_always_on_v1",
-  });
+  let response: ChatModelResponse;
+  try {
+    response = await generateGroundedChatResponse({
+      classId,
+      classTitle: access.role.classTitle,
+      userId: access.user.id,
+      userMessage: message,
+      transcript,
+      purpose: access.role.isTeacher ? "teacher_chat_always_on_v1" : "student_chat_always_on_v1",
+    });
+  } catch (error) {
+    console.error("Failed to generate always-on class chat response", {
+      classId,
+      sessionId,
+      userId: access.user.id,
+      error: error instanceof Error ? error.message : error,
+    });
+    return {
+      ok: false,
+      error: "Sorry, I couldn't generate a response right now. Please try again.",
+    };
+  }
 
   const now = new Date().toISOString();
   const authorKind = access.role.isTeacher ? "teacher" : "student";
@@ -627,47 +642,61 @@ export async function sendClassChatMessage(
     created_at: now,
   };
 
-  const { error: insertError } = await access.supabase.from("class_chat_messages").insert([
-    {
-      id: userRow.id,
-      session_id: userRow.session_id,
-      class_id: userRow.class_id,
-      author_user_id: userRow.author_user_id,
-      author_kind: userRow.author_kind,
-      content: userRow.content,
-      citations: userRow.citations,
-      safety: userRow.safety,
-      provider: userRow.provider,
-      model: userRow.model,
-      prompt_tokens: userRow.prompt_tokens,
-      completion_tokens: userRow.completion_tokens,
-      total_tokens: userRow.total_tokens,
-      latency_ms: userRow.latency_ms,
-      created_at: userRow.created_at,
-    },
-    {
-      id: assistantRow.id,
-      session_id: assistantRow.session_id,
-      class_id: assistantRow.class_id,
-      author_user_id: assistantRow.author_user_id,
-      author_kind: assistantRow.author_kind,
-      content: assistantRow.content,
-      citations: assistantRow.citations,
-      safety: assistantRow.safety,
-      provider: assistantRow.provider,
-      model: assistantRow.model,
-      prompt_tokens: assistantRow.prompt_tokens,
-      completion_tokens: assistantRow.completion_tokens,
-      total_tokens: assistantRow.total_tokens,
-      latency_ms: assistantRow.latency_ms,
-      created_at: assistantRow.created_at,
-    },
-  ]);
+  try {
+    const adminSupabase = createAdminSupabaseClient();
+    const { error: insertError } = await adminSupabase.from("class_chat_messages").insert([
+      {
+        id: userRow.id,
+        session_id: userRow.session_id,
+        class_id: userRow.class_id,
+        author_user_id: userRow.author_user_id,
+        author_kind: userRow.author_kind,
+        content: userRow.content,
+        citations: userRow.citations,
+        safety: userRow.safety,
+        provider: userRow.provider,
+        model: userRow.model,
+        prompt_tokens: userRow.prompt_tokens,
+        completion_tokens: userRow.completion_tokens,
+        total_tokens: userRow.total_tokens,
+        latency_ms: userRow.latency_ms,
+        created_at: userRow.created_at,
+      },
+      {
+        id: assistantRow.id,
+        session_id: assistantRow.session_id,
+        class_id: assistantRow.class_id,
+        author_user_id: assistantRow.author_user_id,
+        author_kind: assistantRow.author_kind,
+        content: assistantRow.content,
+        citations: assistantRow.citations,
+        safety: assistantRow.safety,
+        provider: assistantRow.provider,
+        model: assistantRow.model,
+        prompt_tokens: assistantRow.prompt_tokens,
+        completion_tokens: assistantRow.completion_tokens,
+        total_tokens: assistantRow.total_tokens,
+        latency_ms: assistantRow.latency_ms,
+        created_at: assistantRow.created_at,
+      },
+    ]);
 
-  if (insertError) {
+    if (insertError) {
+      return {
+        ok: false,
+        error: insertError.message,
+      };
+    }
+  } catch (error) {
+    console.error("Failed to persist assistant class chat message", {
+      classId,
+      sessionId,
+      userId: access.user.id,
+      error: error instanceof Error ? error.message : error,
+    });
     return {
       ok: false,
-      error: insertError.message,
+      error: "Failed to save assistant response.",
     };
   }
 

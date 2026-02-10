@@ -71,6 +71,7 @@ export default function ClassChatWorkspace({
         setError(result.error);
         setSessions([]);
         setSelectedSessionId(null);
+        setMessages([]);
         return;
       }
 
@@ -91,6 +92,9 @@ export default function ClassChatWorkspace({
       setSelectedSessionId((current) => {
         if (current && nextSessions.some((session) => session.id === current)) {
           return current;
+        }
+        if (!nextSessions[0]?.id) {
+          setMessages([]);
         }
         return nextSessions[0]?.id ?? null;
       });
@@ -142,8 +146,17 @@ export default function ClassChatWorkspace({
         return;
       }
 
-      setSessions((current) => current.filter((session) => session.id !== result.data.sessionId));
-      setSelectedSessionId((current) => (current === result.data.sessionId ? null : current));
+      setSessions((current) => {
+        const remainingSessions = current.filter((session) => session.id !== result.data.sessionId);
+        setSelectedSessionId((currentSelectedSessionId) => {
+          if (currentSelectedSessionId !== result.data.sessionId) {
+            return currentSelectedSessionId;
+          }
+          setMessages([]);
+          return remainingSessions[0]?.id ?? null;
+        });
+        return remainingSessions;
+      });
     });
   };
 
