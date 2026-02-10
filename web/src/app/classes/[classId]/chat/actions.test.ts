@@ -18,24 +18,11 @@ vi.mock("next/navigation", () => ({
 const {
   requireAuthenticatedUser,
   getClassAccess,
-  generateTextWithFallback,
-  retrieveMaterialContext,
-  loadPublishedBlueprintContext,
-  buildChatPrompt,
+  generateGroundedChatResponse,
 } = vi.hoisted(() => ({
   requireAuthenticatedUser: vi.fn(),
   getClassAccess: vi.fn(),
-  generateTextWithFallback: vi.fn(),
-  retrieveMaterialContext: vi.fn(),
-  loadPublishedBlueprintContext: vi.fn(),
-  buildChatPrompt: vi.fn(() => ({
-    system: "system",
-    user: "user",
-  })),
-}));
-
-vi.mock("@/lib/ai/providers", () => ({
-  generateTextWithFallback,
+  generateGroundedChatResponse: vi.fn(),
 }));
 
 vi.mock("@/lib/activities/access", () => ({
@@ -43,13 +30,8 @@ vi.mock("@/lib/activities/access", () => ({
   getClassAccess,
 }));
 
-vi.mock("@/lib/materials/retrieval", () => ({
-  retrieveMaterialContext,
-}));
-
-vi.mock("@/lib/chat/context", () => ({
-  loadPublishedBlueprintContext,
-  buildChatPrompt,
+vi.mock("@/lib/chat/generate", () => ({
+  generateGroundedChatResponse,
 }));
 
 const supabaseAuth = {
@@ -211,7 +193,6 @@ describe("chat actions", () => {
 
   it("sends open practice chat and logs ai request", async () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "student-1" } } });
-    const aiRequestBuilder = makeBuilder({ error: null });
 
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
@@ -223,29 +204,13 @@ describe("chat actions", () => {
       if (table === "enrollments") {
         return makeBuilder({ data: { role: "student" }, error: null });
       }
-      if (table === "ai_requests") {
-        return aiRequestBuilder;
-      }
       return makeBuilder({ data: null, error: null });
     });
 
-    loadPublishedBlueprintContext.mockResolvedValueOnce({
-      blueprintId: "bp-1",
-      summary: "Summary",
-      topicCount: 3,
-      blueprintContext: "Topic 1: Limits",
-    });
-    retrieveMaterialContext.mockResolvedValueOnce("Source 1 | Notes | page 1");
-    generateTextWithFallback.mockResolvedValueOnce({
-      provider: "openrouter",
-      model: "model-1",
-      content: JSON.stringify({
-        safety: "ok",
-        answer: "Start with the definition of a limit.",
-        citations: [{ sourceLabel: "Source 1", rationale: "Defines formal limit notation." }],
-      }),
-      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
-      latencyMs: 12,
+    generateGroundedChatResponse.mockResolvedValueOnce({
+      safety: "ok",
+      answer: "Start with the definition of a limit.",
+      citations: [{ sourceLabel: "Source 1", rationale: "Defines formal limit notation." }],
     });
 
     const formData = new FormData();
@@ -257,12 +222,11 @@ describe("chat actions", () => {
     if (result.ok) {
       expect(result.response.answer).toContain("definition of a limit");
     }
-    expect(aiRequestBuilder.insert).toHaveBeenCalled();
+    expect(generateGroundedChatResponse).toHaveBeenCalled();
   });
 
   it("normalizes citation label variants without misattributing unknown labels", async () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "student-1" } } });
-    const aiRequestBuilder = makeBuilder({ error: null });
 
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
@@ -274,32 +238,16 @@ describe("chat actions", () => {
       if (table === "enrollments") {
         return makeBuilder({ data: { role: "student" }, error: null });
       }
-      if (table === "ai_requests") {
-        return aiRequestBuilder;
-      }
       return makeBuilder({ data: null, error: null });
     });
 
-    loadPublishedBlueprintContext.mockResolvedValueOnce({
-      blueprintId: "bp-1",
-      summary: "Summary",
-      topicCount: 3,
-      blueprintContext: "Blueprint Context | Published blueprint context\nSummary: Limits",
-    });
-    retrieveMaterialContext.mockResolvedValueOnce("Source 1 | Notes | page 1");
-    generateTextWithFallback.mockResolvedValueOnce({
-      provider: "openrouter",
-      model: "model-1",
-      content: JSON.stringify({
-        safety: "ok",
-        answer: "Start with the definition of a limit.",
-        citations: [
-          { sourceLabel: "Source: Blueprint Context", rationale: "From blueprint summary." },
-          { sourceLabel: "Unknown Label", rationale: "Unmatched external claim." },
-        ],
-      }),
-      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
-      latencyMs: 12,
+    generateGroundedChatResponse.mockResolvedValueOnce({
+      safety: "ok",
+      answer: "Start with the definition of a limit.",
+      citations: [
+        { sourceLabel: "Blueprint Context", rationale: "From blueprint summary." },
+        { sourceLabel: "Unknown Label", rationale: "Unmatched external claim." },
+      ],
     });
 
     const formData = new FormData();

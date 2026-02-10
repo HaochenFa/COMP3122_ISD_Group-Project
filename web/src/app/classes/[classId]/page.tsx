@@ -4,12 +4,15 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { uploadMaterial } from "@/app/classes/actions";
 import MaterialUploadForm from "./MaterialUploadForm";
 import AuthHeader from "@/app/components/AuthHeader";
+import StudentClassExperience from "@/app/classes/[classId]/StudentClassExperience";
+import TeacherChatMonitorPanel from "@/app/classes/[classId]/chat/TeacherChatMonitorPanel";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = {
   error?: string;
   uploaded?: string;
+  view?: string;
 };
 
 type ActivityAssignmentSummary = {
@@ -267,6 +270,24 @@ export default async function ClassOverviewPage({
         ? "Material uploaded, but extraction failed."
         : null;
 
+  if (!isTeacher) {
+    return (
+      <StudentClassExperience
+        classId={classRow.id}
+        classTitle={classRow.title}
+        subject={classRow.subject}
+        level={classRow.level}
+        publishedBlueprint={Boolean(publishedBlueprint)}
+        errorMessage={errorMessage}
+        uploadNotice={uploadNotice}
+        chatAssignments={studentChatAssignments}
+        quizAssignments={studentQuizAssignments}
+        flashcardsAssignments={studentFlashcardsAssignments}
+        initialView={resolvedSearchParams?.view === "chat" ? "chat" : null}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
@@ -346,89 +367,63 @@ export default async function ClassOverviewPage({
               <h2 className="text-lg font-semibold">AI Chat</h2>
               <p className="mt-2 text-sm text-slate-400">
                 {publishedBlueprint
-                  ? "Use open practice chat or assignment chat grounded in the published blueprint."
-                  : "Publish the blueprint to unlock chat experiences."}
+                  ? "Always-on class chat is available for teachers and students. Use this panel to monitor student chat history."
+                  : "Publish the blueprint to unlock always-on chat and assignment chat experiences."}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
-                href={`/classes/${classRow.id}/chat`}
+                href="#teacher-chat-monitor"
                 className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-white/30 hover:bg-white/5"
               >
-                Open practice chat
+                Open chat monitor
               </Link>
-              {isTeacher ? (
-                <Link
-                  href={`/classes/${classRow.id}/activities/chat/new`}
-                  className="rounded-xl bg-cyan-400/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
-                >
-                  Create chat assignment
-                </Link>
-              ) : null}
+              <Link
+                href={`/classes/${classRow.id}/activities/chat/new`}
+                className="rounded-xl bg-cyan-400/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
+              >
+                Create chat assignment
+              </Link>
             </div>
           </div>
 
-          {isTeacher ? (
-            <div className="mt-5 space-y-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                Recent chat assignments
-              </p>
-              {teacherChatAssignments.length > 0 ? (
-                teacherChatAssignments.slice(0, 5).map((assignment) => (
-                  <div
-                    key={assignment.assignmentId}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
-                      <p className="text-xs text-slate-500">{formatDueDate(assignment.dueAt)}</p>
-                    </div>
-                    <Link
-                      href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/review`}
-                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
-                    >
-                      Review
-                    </Link>
+          <div className="mt-5 space-y-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+              Recent chat assignments
+            </p>
+            {teacherChatAssignments.length > 0 ? (
+              teacherChatAssignments.slice(0, 5).map((assignment) => (
+                <div
+                  key={assignment.assignmentId}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
+                    <p className="text-xs text-slate-500">{formatDueDate(assignment.dueAt)}</p>
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-400">
-                  No chat assignments yet. Create one to start collecting student submissions.
-                </p>
-              )}
+                  <Link
+                    href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/review`}
+                    className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
+                  >
+                    Review
+                  </Link>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-400">
+                No chat assignments yet. Create one to start collecting student submissions.
+              </p>
+            )}
+          </div>
+
+          {publishedBlueprint ? (
+            <div className="mt-6">
+              <TeacherChatMonitorPanel classId={classRow.id} />
             </div>
           ) : (
-            <div className="mt-5 space-y-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                Your chat assignments
-              </p>
-              {studentChatAssignments.length > 0 ? (
-                studentChatAssignments.slice(0, 5).map((assignment) => (
-                  <div
-                    key={assignment.assignmentId}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
-                      <p className="text-xs text-slate-500">
-                        {formatDueDate(assignment.dueAt)} · Status:{" "}
-                        {formatAssignmentStatus(assignment.status)}
-                      </p>
-                    </div>
-                    <Link
-                      href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/chat`}
-                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
-                    >
-                      Open
-                    </Link>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-400">
-                  No chat assignments yet. Use open practice chat while you wait.
-                </p>
-              )}
-            </div>
+            <p className="mt-6 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100">
+              Publish the class blueprint before opening teacher chat monitor.
+            </p>
           )}
         </section>
 
